@@ -21,8 +21,10 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <GL/gl.h>
-#include <GL/glext.h>
+
+#define NOMINMAX
+#include <windows.h>
+#include <GL/glew.h>
 
 #include "Platform.h"
 

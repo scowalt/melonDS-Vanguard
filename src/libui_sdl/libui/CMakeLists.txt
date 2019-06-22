@@ -35,6 +35,9 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/out")
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/out")
 set(CMAKE_PDB_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/out")
 
+include_directories("C:/Users/Daniel/Documents/deps/SDL_dev")
+link_directories("C:/Users/Daniel/Documents/deps/SDL_dev/libs")
+
 if(APPLE)
 	set(_OSNAME darwin)
 	set(_HASVERSION TRUE)
@@ -77,7 +80,7 @@ if(MSVC)
 	set(_COMMON_CFLAGS
 		/W4 /wd4100
 		/bigobj /nologo
-		/RTC1 /RTCs /RTCu
+		#/RTC1 /RTCs /RTCu
 		/EHsc
 	)
 

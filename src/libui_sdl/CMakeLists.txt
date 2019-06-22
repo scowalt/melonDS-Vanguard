@@ -1,5 +1,9 @@
 project(libui_sdl)
 
+include_directories("C:/Users/Daniel/Documents/deps")
+include_directories("C:/Users/Daniel/Documents/deps/SDL_dev")
+link_directories("C:/Users/Daniel/Documents/deps/SDL_dev/libs")
+include_directories("C:/Users/Daniel/Documents/deps")
 SET(SOURCES_LIBUI
 	main.cpp
 	Platform.cpp
@@ -18,11 +22,11 @@ option(BUILD_SHARED_LIBS "Whether to build libui as a shared library or a static
 set(BUILD_SHARED_LIBS OFF)
 add_subdirectory(libui)
 
-find_package(SDL2 REQUIRED)
+#find_package(SDL2 REQUIRED)
 include_directories(${SDL2_INCLUDE_DIR})
 #string(STRIP ${SDL2_LIBRARIES} SDL2_LIBRARIES)
 
-add_executable(melonDS ${SOURCES_LIBUI})
+add_executable(melonDS WIN32 ${SOURCES_LIBUI})
 target_link_libraries(melonDS
 	core ${SDL2_LIBRARIES} libui)
 

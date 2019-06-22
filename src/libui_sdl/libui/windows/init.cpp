@@ -21,7 +21,7 @@ static const char *initerr(const char *message, const WCHAR *label, DWORD value)
 
 	hassysmsg = FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, value, 0, (LPWSTR) (&sysmsg), 0, NULL) != 0;
 	if (!hassysmsg)
-		sysmsg = L"";
+		sysmsg = (wchar_t*)L"";
 	wmessage = toUTF16(message + 1);
 	wout = strf(L"-error initializing libui: %s; code %I32d (0x%08I32X) %s",
 		wmessage,
@@ -107,9 +107,9 @@ const char *uiInit(uiInitOptions *o)
 	if (InitCommonControlsEx(&icc) == 0)
 		return ieLastErr("initializing Common Controls");
 
-	hr = CoInitialize(NULL);
-	if (hr != S_OK && hr != S_FALSE)
-		return ieHRESULT("initializing COM", hr);
+//	hr = CoInitialize(NULL);
+//	if (hr != S_OK && hr != S_FALSE)
+//		return ieHRESULT("initializing COM", hr);
 	// LONGTERM initialize COM security
 	// LONGTERM (windows vista) turn off COM exception handling
 

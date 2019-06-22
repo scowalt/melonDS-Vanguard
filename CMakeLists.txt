@@ -1,14 +1,22 @@
-cmake_minimum_required(VERSION 3.13)
+cmake_minimum_required(VERSION 3.12)
 
-cmake_policy(VERSION 3.13)
+cmake_policy(VERSION 3.12)
 if (POLICY CMP0076)
     cmake_policy(SET CMP0076 NEW)
 endif()
 
+add_compile_definitions(__WIN32__)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+set(CMAKE_EXE_LINKER_FLAGS    "${CMAKE_EXE_LINKER_FLAGS} /MANIFEST:NO")
+set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} /MANIFEST:NO")
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /MANIFEST:NO")
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:WINDOWS")
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /CLRTHREADATTRIBUTE:STA")
 
-project(melonDS)
+include_directories("C:/Users/Daniel/Documents/deps")
+include_directories("C:/Users/Daniel/Documents/deps/SDL_dev")
+link_directories("C:/Users/Daniel/Documents/deps/SDL_dev/libs")
 
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
@@ -25,7 +33,7 @@ if(ENABLE_LTO)
 endif()
 
 add_compile_options(-fno-pic)
-add_link_options(-no-pie)
+#add_link_options(-no-pie)
 
 option(BUILD_LIBUI "Build libui frontend" ON)
 
@@ -38,3 +46,5 @@ endif()
 configure_file(
 	${CMAKE_SOURCE_DIR}/romlist.bin
 	${CMAKE_BINARY_DIR}/romlist.bin COPYONLY)
+	
+project(melonDS)

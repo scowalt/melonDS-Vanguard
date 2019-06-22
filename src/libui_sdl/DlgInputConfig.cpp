@@ -20,7 +20,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <SDL2/SDL.h>
+#include "SDL2/SDL.h"
 #include "libui/ui.h"
 
 #include "../types.h"

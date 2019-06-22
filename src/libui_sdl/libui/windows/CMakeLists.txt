@@ -1,5 +1,9 @@
 # 3 june 2016
 
+
+include_directories("C:/Users/Daniel/Documents/deps")
+include_directories("C:/Users/Daniel/Documents/deps/SDL_dev")
+link_directories("C:/Users/Daniel/Documents/deps/SDL_dev/libs")
 list(APPEND _LIBUI_SOURCES
 	windows/alloc.cpp
 	windows/area.cpp
@@ -73,7 +77,7 @@ macro(_handle_static)
 	add_custom_command(
 		TARGET libui POST_BUILD
 		COMMAND
-			${CMAKE_COMMAND} -E copy $<TARGET_PROPERTY:libui,BINARY_DIR>/CMakeFiles/libui.dir/windows/resources.rc.* ${_LIBUI_STATIC_RES}
+			${CMAKE_COMMAND} -E copy $<TARGET_PROPERTY:libui,BINARY_DIR>/libui.dir/RelWithDebInfo/resources.res ${_LIBUI_STATIC_RES}
 		COMMENT "Copying libui.res")
 endmacro()
 

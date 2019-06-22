@@ -364,7 +364,7 @@ static void fontDialogDrawSampleText(struct fontDialog *f, ID2D1RenderTarget *rt
 		sample = fontCollectionCorrectString(f->fc, sampleStrings);
 		sampleStrings->Release();
 	} else
-		sample = L"The quick brown fox jumps over the lazy dog.";
+		sample = (wchar_t*)L"The quick brown fox jumps over the lazy dog.";
 
 	// DirectWrite doesn't allow creating a text format from a font; we need to get this ourselves
 	family = cbGetItemText(f->familyCombobox, f->curFamily);

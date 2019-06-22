@@ -21,7 +21,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <SDL2/SDL.h>
+#include "SDL2/SDL.h"
 #include "libui/ui.h"
 
 #include "../OpenGLSupport.h"
@@ -45,9 +45,10 @@
 #include "../Config.h"
 
 #include "../Savestate.h"
+#include "../Vanguard/VanguardClientInitializer.h"
 
 #include "OSD.h"
-
+#define NOMINMAX
 
 // savestate slot mapping
 // 1-8: regular slots (quick access)
@@ -1860,6 +1861,12 @@ int OnCloseWindow(uiWindow* window, void* blarg)
     return 1;
 }
 
+#ifdef __WIN32__
+//not #if defined(_WIN32) || defined(_WIN64) because we have strncasecmp in mingw
+#define strncasecmp _strnicmp
+#define strcasecmp _stricmp
+#endif
+
 void OnDropFile(uiWindow* window, char* file, void* blarg)
 {
     char* ext = &file[strlen(file)-3];
@@ -2565,7 +2572,7 @@ int main(int argc, char** argv)
             }
         }
     }
-
+	VanguardClientInitializer::Initialize();
     CreateMainWindowMenu();
 
     MainDrawAreaHandler.Draw = OnAreaDraw;
@@ -2724,7 +2731,7 @@ int CALLBACK WinMain(HINSTANCE hinst, HINSTANCE hprev, LPSTR cmdline, int cmdsho
 {
     int argc = 0;
     wchar_t** argv_w = CommandLineToArgvW(GetCommandLineW(), &argc);
-    char* nullarg = "";
+    char* nullarg = (char*)"";
 
     char** argv = new char*[argc];
     for (int i = 0; i < argc; i++)
