@@ -8,6 +8,8 @@
 #include "VanguardClient.h"
 #include "VanguardClientInitializer.h"
 #include "Helpers.hpp"
+#include "../libui_sdl/libui/ui.h"
+#include "../libui_sdl/main.h"
 
 #include <msclr/marshal_cppstd.h>
 #using < system.dll>
@@ -77,7 +79,11 @@ static void EmuThreadExecute(Action ^ callback)
 }
 static void EmuThreadExecute(IntPtr callbackPtr)
 {
-	//todo
+	int prevstatus = EmuRunning;
+	EmuRunning = 2;
+	while (EmuStatus != 2);
+	static_cast<void(__stdcall*)(void)>(callbackPtr.ToPointer())();
+	EmuRunning = prevstatus;
 }
 
 static PartialSpec ^
@@ -236,8 +242,7 @@ void VanguardClient::StartClient()
 
 	receiver = gcnew NetCoreReceiver();
 	receiver->Attached = attached;
-	receiver->MessageReceived +=
-		gcnew EventHandler<NetCoreEventArgs ^>(&VanguardClient::OnMessageReceived);
+	receiver->MessageReceived += gcnew EventHandler<NetCoreEventArgs ^>(&VanguardClient::OnMessageReceived);
 	connector = gcnew VanguardConnector(receiver);
 }
 
@@ -437,11 +442,14 @@ void VanguardClient::LoadRom(String ^ filename)
 	// Game is not running
 	if (currentOpenRom != filename)
 	{
-
-		const std::string& path = Helpers::systemStringToUtf8String(filename);
+		std::string path = Helpers::systemStringToUtf8String(filename);
 		loading = true;
 
-		
+		int prevstatus = EmuRunning;
+		EmuRunning = 2;
+		while (EmuStatus != 2);
+		TryLoadROM((char*)path.c_str(), prevstatus);
+
 		// We have to do it this way to prevent deadlock due to synced calls. It sucks but it's required
 		// at the moment
 		while (loading)
@@ -458,7 +466,7 @@ void VanguardClient::LoadRom(String ^ filename)
 bool VanguardClient::LoadState(std::string filename)
 {
 	StepActions::ClearStepBlastUnits();
-	//todo
+	Main::LoadState(filename.c_str());
 	return true;
 }
 
@@ -466,7 +474,8 @@ bool VanguardClient::SaveState(String ^ filename, bool wait)
 {
 	if (true)
 	{
-		const std::string converted_filename = Helpers::systemStringToUtf8String(filename);
+		const char* converted_filename = Helpers::systemStringToUtf8String(filename).c_str();
+		Main::SaveState(converted_filename);
 		return true;
 	}
 	return false;
@@ -476,10 +485,12 @@ bool VanguardClient::SaveState(String ^ filename, bool wait)
 #pragma region Delegates
 void StopGame()
 {
+	Stop(false);
 }
 
 void Quit()
 {
+	uiQuit();
 }
 
 void AllSpecsSent()
@@ -546,8 +557,8 @@ void VanguardClient::OnMessageReceived(Object ^ sender, NetCoreEventArgs ^ e)
 		IO::FileInfo ^ file = gcnew IO::FileInfo(path);
 		if (file->Directory != nullptr && file->Directory->Exists == false)
 			file->Directory->Create();
-		//todo
-			e->setReturnValue(path);
+		VanguardClient::SaveState(path, true);
+		e->setReturnValue(path);
 	}
 	break;
 

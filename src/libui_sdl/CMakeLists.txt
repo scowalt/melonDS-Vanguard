@@ -26,6 +26,10 @@ add_subdirectory(libui)
 include_directories(${SDL2_INCLUDE_DIR})
 #string(STRIP ${SDL2_LIBRARIES} SDL2_LIBRARIES)
 
+#Narrysmod - Goes before add_executable
+add_compile_options("/AI\"${PROJECT_SOURCE_DIR}/\"")
+#---------
+
 add_executable(melonDS WIN32 ${SOURCES_LIBUI})
 target_link_libraries(melonDS
 	core ${SDL2_LIBRARIES} libui)

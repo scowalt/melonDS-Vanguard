@@ -30,6 +30,7 @@
 #include "RTC.h"
 #include "Wifi.h"
 #include "Platform.h"
+#include "Vanguard/VanguardClient.h"
 
 
 namespace NDS
@@ -782,6 +783,7 @@ u32 RunFrame()
     if (!Running) return 263; // dorp
     if (CPUStop & 0x40000000) return 263;
 
+	VanguardClientUnmanaged::CORE_STEP();
     GPU::StartFrame();
 
     while (Running && GPU::TotalScanlines==0)

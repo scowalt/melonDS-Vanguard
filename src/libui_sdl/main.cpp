@@ -46,8 +46,10 @@
 
 #include "../Savestate.h"
 #include "../Vanguard/VanguardClientInitializer.h"
+#include "main.h"
 
 #include "OSD.h"
+#include "Vanguard/VanguardClient.h"
 #define NOMINMAX
 
 // savestate slot mapping
@@ -63,6 +65,9 @@ const int kScreenSizing[4] = {0, 1, 2, 3};
 
 
 char* EmuDirectory;
+int EmuRunning = 0;
+volatile int EmuStatus = 0;
+
 
 
 uiWindow* MainWindow;
@@ -97,8 +102,6 @@ uiMenuItem* MenuItem_LimitFPS;
 uiMenuItem* MenuItem_ShowOSD;
 
 SDL_Thread* EmuThread;
-int EmuRunning;
-volatile int EmuStatus;
 
 bool RunningSomething;
 char ROMPath[1024];
@@ -1618,6 +1621,8 @@ void TryLoadROM(char* file, int prevstatus)
 
     SetupSRAMPath();
 
+	std::string str(file);
+	VanguardClientUnmanaged::LOAD_GAME_START(str);
     if (NDS::LoadROM(ROMPath, SRAMPath, Config::DirectBoot))
     {
         SavestateLoaded = false;
@@ -1625,6 +1630,7 @@ void TryLoadROM(char* file, int prevstatus)
 
         strncpy(PrevSRAMPath, SRAMPath, 1024); // safety
         Run();
+		VanguardClientUnmanaged::LOAD_GAME_DONE();
     }
     else
     {
@@ -1635,6 +1641,7 @@ void TryLoadROM(char* file, int prevstatus)
         strncpy(ROMPath, oldpath, 1024);
         strncpy(SRAMPath, oldsram, 1024);
         EmuRunning = prevstatus;
+		VanguardClientUnmanaged::LOAD_GAME_DONE();
     }
 }
 
@@ -1666,6 +1673,69 @@ void GetSavestateName(int slot, char* filename, int len)
     strcpy(&filename[pos], ".ml");
     filename[pos+3] = '0'+slot;
     filename[pos+4] = '\0';
+}
+
+
+void Main::LoadState(const char* filename)
+{
+	int prevstatus = EmuRunning;
+	EmuRunning = 2;
+	while (EmuStatus != 2);
+	if (!Platform::FileExists(filename))
+	{
+		char msg[64];
+		sprintf(msg, "State file does not exist");
+		OSD::AddMessage(0xFFA0A0, msg);
+
+		EmuRunning = prevstatus;
+		return;
+	}
+
+	// backup
+	Savestate* backup = new Savestate("timewarp.mln", true);
+	NDS::DoSavestate(backup);
+	delete backup;
+
+	bool failed = false;
+
+	Savestate* state = new Savestate(filename, false);
+	if (state->Error)
+	{
+		delete state;
+
+		uiMsgBoxError(MainWindow, "Error", "Could not load savestate file.");
+
+		// current state might be crapoed, so restore from sane backup
+		state = new Savestate("timewarp.mln", false);
+		failed = true;
+	}
+
+	NDS::DoSavestate(state);
+	delete state;
+
+	if (!failed)
+	{
+		if (Config::SavestateRelocSRAM && ROMPath[0] != '\0')
+		{
+			strncpy(PrevSRAMPath, SRAMPath, 1024);
+
+			strncpy(SRAMPath, filename, 1019);
+			int len = strlen(SRAMPath);
+			strcpy(&SRAMPath[len], ".sav");
+			SRAMPath[len + 4] = '\0';
+
+			NDS::RelocateSave(SRAMPath, false);
+		}
+
+		char msg[64];
+		sprintf(msg, "State loaded from file");
+		OSD::AddMessage(0, msg);
+
+		SavestateLoaded = true;
+		uiMenuItemEnable(MenuItem_UndoStateLoad);
+	}
+
+	EmuRunning = prevstatus;
 }
 
 void LoadState(int slot)
@@ -1753,6 +1823,40 @@ void LoadState(int slot)
     EmuRunning = prevstatus;
 }
 
+void Main::SaveState(const char* filename)
+{
+	int prevstatus = EmuRunning;
+	EmuRunning = 2;
+	while (EmuStatus != 2);
+	Savestate* state = new Savestate(filename, true);
+	if (state->Error)
+	{
+		delete state;
+		uiMsgBoxError(MainWindow, "Error", "Could not save state.");
+	}
+	else
+	{
+		NDS::DoSavestate(state);
+		delete state;
+
+
+		if (Config::SavestateRelocSRAM && ROMPath[0] != '\0')
+		{
+			strncpy(SRAMPath, filename, 1019);
+			int len = strlen(SRAMPath);
+			strcpy(&SRAMPath[len], ".sav");
+			SRAMPath[len + 4] = '\0';
+
+			NDS::RelocateSave(SRAMPath, true);
+		}
+	}
+
+	char msg[64];
+	sprintf(msg, "State saved to file");
+	OSD::AddMessage(0, msg);
+
+	EmuRunning = prevstatus;
+}
 void SaveState(int slot)
 {
     int prevstatus = EmuRunning;

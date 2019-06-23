@@ -77,9 +77,10 @@ macro(_handle_static)
 	add_custom_command(
 		TARGET libui POST_BUILD
 		COMMAND
-			${CMAKE_COMMAND} -E copy $<TARGET_PROPERTY:libui,BINARY_DIR>/libui.dir/RelWithDebInfo/resources.res ${_LIBUI_STATIC_RES}
+			${CMAKE_COMMAND} -E copy $<TARGET_PROPERTY:libui,BINARY_DIR>/libui.dir/Release/resources.res ${_LIBUI_STATIC_RES}
 		COMMENT "Copying libui.res")
 endmacro()
+
 
 # notice that usp10 comes before gdi32
 # TODO prune this list
