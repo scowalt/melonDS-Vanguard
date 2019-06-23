@@ -1581,7 +1581,7 @@ u8 ARM9Read8(u32 addr)
     case 0x03000000:
         if (SWRAM_ARM9)
         {
-            return *(u8*)&SWRAM_ARM9[addr & SWRAM_ARM9Mask];
+            return *(u8*)3000000&SWRAM_ARM9[addr & SWRAM_ARM9Mask];
         }
         else
         {

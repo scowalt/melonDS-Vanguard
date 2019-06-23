@@ -5,11 +5,13 @@
 
 #include <string>
 
+#include "MelonMemoryDomains.h"
 #include "VanguardClient.h"
 #include "VanguardClientInitializer.h"
 #include "Helpers.hpp"
 #include "../libui_sdl/libui/ui.h"
 #include "../libui_sdl/main.h"
+#include "../NDS.h"
 
 #include <msclr/marshal_cppstd.h>
 #using < system.dll>
@@ -260,9 +262,163 @@ void VanguardClient::StopClient()
 }
 
 #pragma region MemoryDomains
+//For some reason if we do these in another class, melon won't build
+namespace Domains
+{
+
+	public
+	ref class MainRAM : RTCV::CorruptCore::IMemoryDomain
+	{
+	public:
+		property System::String^ Name { virtual System::String^ get(); }
+		property long long Size { virtual long long get(); }
+		property int WordSize { virtual int get(); }
+		property bool BigEndian { virtual bool get(); }
+		virtual unsigned char PeekByte(long long addr);
+		virtual array<unsigned char> ^ PeekBytes(long long address, int length);
+		virtual void PokeByte(long long addr, unsigned char val);
+	};
+
+	ref class VRAM : RTCV::CorruptCore::IMemoryDomain
+	{
+	public:
+		property System::String^ Name { virtual System::String^ get(); }
+		property long long Size { virtual long long get(); }
+		property int WordSize { virtual int get(); }
+		property bool BigEndian { virtual bool get(); }
+		virtual unsigned char PeekByte(long long addr);
+		virtual array<unsigned char> ^ PeekBytes(long long address, int length);
+		virtual void PokeByte(long long addr, unsigned char val);
+	};
+
+#define WORD_SIZE 4
+#define BIG_ENDIAN false
+
+#define MAIN_RAM_OFFSET 0x02000000
+#define VRAM_OFFSET 0x06000000
+#define VRAM_SIZE 0x00800000
+
+#define VRAM_ABG_OFFSET 0x00000000
+#define VRAM_BBG_OFFSET 0x00200000
+#define VRAM_AOBJ_OFFSET 0x00400000
+#define VRAM_BOBJ_OFFSET 0x00600000
+
+delegate void MessageDelegate(Object^);
+#pragma region MainRam
+	String^ MainRAM::Name::get()
+	{
+		return "MainRAM";
+	}
+
+	long long MainRAM::Size::get()
+	{
+		return MAIN_RAM_SIZE;
+	}
+
+	int MainRAM::WordSize::get()
+	{
+		return WORD_SIZE;
+	}
+
+	bool MainRAM::BigEndian::get()
+	{
+		return BIG_ENDIAN;
+	}
+
+	unsigned char MainRAM::PeekByte(long long addr)
+	{
+		if (addr < MAIN_RAM_SIZE)
+		{
+			// Convert the address
+			addr += MAIN_RAM_OFFSET;
+
+			return NDS::ARM9Read8(static_cast<u32>(addr));
+		}
+		return 0;
+	}
+
+	void MainRAM::PokeByte(long long addr, unsigned char val)
+	{
+		if (addr < MAIN_RAM_SIZE)
+		{
+			// Convert the address
+			addr += MAIN_RAM_OFFSET;
+			NDS::ARM9Write8(static_cast<u32>(addr), val);
+		}
+	}
+
+	array<unsigned char>^ MainRAM::PeekBytes(long long address, int length)
+	{
+		array<unsigned char> ^ bytes = gcnew array<unsigned char>(length);
+		for (int i = 0; i < length; i++)
+		{
+			bytes[i] = PeekByte(address + i);
+		}
+		return bytes;
+	}
+#pragma endregion
+	
+#pragma region VRAM
+	String^ VRAM::Name::get()
+	{
+		return "VRAM";
+	}
+
+	long long VRAM::Size::get()
+	{
+		return MAIN_RAM_SIZE;
+	}
+
+	int VRAM::WordSize::get()
+	{
+		return WORD_SIZE;
+	}
+
+	bool VRAM::BigEndian::get()
+	{
+		return BIG_ENDIAN;
+	}
+
+	unsigned char VRAM::PeekByte(long long addr)
+	{
+		if (addr < VRAM_SIZE)
+		{
+			// Convert the address
+			addr += VRAM_OFFSET;
+
+			return NDS::ARM9Read8(static_cast<u32>(addr));
+		}
+		return 0;
+	}
+
+	void VRAM::PokeByte(long long addr, unsigned char val)
+	{
+		if (addr < VRAM_SIZE)
+		{
+			// Convert the address
+			addr += VRAM_OFFSET;
+			NDS::ARM9Write8(static_cast<u32>(addr), val);
+		}
+	}
+
+	array<unsigned char>^ VRAM::PeekBytes(long long address, int length)
+	{
+		array<unsigned char> ^ bytes = gcnew array<unsigned char>(length);
+		for (int i = 0; i < length; i++)
+		{
+			bytes[i] = PeekByte(address + i);
+		}
+		return bytes;
+	}
+#pragma endregion
+
+
+}
 static array<MemoryDomainProxy ^> ^
 GetInterfaces() {
-	array<MemoryDomainProxy ^> ^ interfaces = gcnew array<MemoryDomainProxy ^>(0);
+	array<MemoryDomainProxy ^> ^ interfaces = gcnew array<MemoryDomainProxy ^>(2);
+	interfaces[0] = (gcnew MemoryDomainProxy(gcnew Domains::MainRAM));
+	interfaces[0] = (gcnew MemoryDomainProxy(gcnew Domains::VRAM));
 	return interfaces;
 }
 
@@ -622,3 +778,4 @@ void VanguardClient::OnMessageReceived(Object ^ sender, NetCoreEventArgs ^ e)
 		break;
 	}
 }
+

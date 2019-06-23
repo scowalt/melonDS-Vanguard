@@ -6,3 +6,9 @@ obj
 melon_grc.c
 melon_grc.h
 cmake-build
+bios7.bin
+bios9.bin
+firmware.bin
+sdl2.dll
+.vs/*
+out/*

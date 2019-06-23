@@ -28,16 +28,17 @@ add_library(core STATIC
 	Wifi.cpp
 	WifiAP.cpp
 	Vanguard/Helpers.hpp
+	Vanguard/MelonMemoryDomains.h
+	Vanguard/MelonMemoryDomains.cpp
 	Vanguard/VanguardClient.cpp
 )
 
-target_link_libraries(core ole32 gdi32 user32 shell32 ole32 dwrite d2d1 usp10 ws2_32 iphlpapi SDL2 uxtheme comctl32 ws2_32 opengl32)
-
-
 file(GLOB CLR_FILES
+				"Vanguard/MelonMemoryDomains.h"
+				"Vanguard/MelonMemoryDomains.cpp"
 				"Vanguard/Helpers.hpp"
 				"Vanguard/VanguardClient.cpp"
-        )
+			)
 
 include_external_msproject(
     CorruptCore ${PROJECT_SOURCE_DIR}/../../RTCV/Source/Libraries/CorruptCore/CorruptCore.csproj
@@ -60,14 +61,22 @@ string(REGEX REPLACE "/RTC(su|[1su])" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 string(REGEX REPLACE "/RTC(su|[1su])" "" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
 # Narrysmod
 # Copy RTCV dlls and pdbs for easier dev purposes
-set (RTC_DLL_DIR "${PROJECT_SOURCE_DIR}./../RTCV/Build/")
+set (RTC_DLL_DIR "${PROJECT_SOURCE_DIR}/../../RTCV/Build/")
 file(GLOB rtcdlls RELATIVE "${RTC_DLL_DIR}" "${RTC_DLL_DIR}/*.dll")
 file(GLOB rtcpdbs RELATIVE "${RTC_DLL_DIR}" "${RTC_DLL_DIR}/*.pdb")
 
 foreach(dll ${rtcdlls})
-configure_file("${RTC_DLL_DIR}/${dll}" "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${dll}" COPYONLY)
+configure_file("${RTC_DLL_DIR}/${dll}" "${CMAKE_BINARY_DIR}/${dll}" COPYONLY) 
 endforeach()
 
 foreach(pdb ${rtcpdbs})
-configure_file("${RTC_DLL_DIR}/${pdb}" "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${pdb}" COPYONLY)
+configure_file("${RTC_DLL_DIR}/${pdb}" "${CMAKE_BINARY_DIR}/${pdb}" COPYONLY)
 endforeach()
+
+configure_file(${CMAKE_SOURCE_DIR}/SDL2.dll ${CMAKE_BINARY_DIR}/SDL2.dll COPYONLY) 
+configure_file(${CMAKE_SOURCE_DIR}/firmware.bin ${CMAKE_BINARY_DIR}/firmware.bin COPYONLY) 
+configure_file(${CMAKE_SOURCE_DIR}/bios7.bin ${CMAKE_BINARY_DIR}/bios7.bin COPYONLY) 
+configure_file(${CMAKE_SOURCE_DIR}/bios9.bin ${CMAKE_BINARY_DIR}/bios9.bin COPYONLY) 
+
+target_link_libraries(core ole32 gdi32 user32 shell32 ole32 dwrite d2d1 usp10 ws2_32 iphlpapi SDL2 uxtheme comctl32 ws2_32 opengl32)
+
