@@ -692,8 +692,8 @@ void VanguardClientUnmanaged::LOAD_GAME_DONE()
 
 	try
 	{
-		gameDone->Set(VSPEC::SYSTEM, "MelonDS");
-		gameDone->Set(VSPEC::SYSTEMPREFIX, "MelonDS");
+		gameDone->Set(VSPEC::SYSTEM, "melonDS");
+		gameDone->Set(VSPEC::SYSTEMPREFIX, "melonDS");
 		gameDone->Set(VSPEC::SYSTEMCORE, "DS");
 		gameDone->Set(VSPEC::SYNCSETTINGS, "");
 		gameDone->Set(VSPEC::MEMORYDOMAINS_BLACKLISTEDDOMAINS, gcnew array<String ^>{});
