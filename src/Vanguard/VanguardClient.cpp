@@ -12,6 +12,7 @@
 #include "../libui_sdl/libui/ui.h"
 #include "../libui_sdl/main.h"
 #include "../NDS.h"
+#include "../NDSCart.h"
 
 #include <msclr/marshal_cppstd.h>
 #using < system.dll>
@@ -91,7 +92,7 @@ static void EmuThreadExecute(IntPtr callbackPtr)
 static PartialSpec ^
 getDefaultPartial() {
 	PartialSpec ^ partial = gcnew PartialSpec("VanguardSpec");
-	partial->Set(VSPEC::NAME, "Dolphin");
+	partial->Set(VSPEC::NAME, "melonDS");
 	partial->Set(VSPEC::SUPPORTS_RENDERING, false);
 	partial->Set(VSPEC::SUPPORTS_CONFIG_MANAGEMENT, true);
 	partial->Set(VSPEC::SUPPORTS_CONFIG_HANDOFF, true);
@@ -104,7 +105,7 @@ getDefaultPartial() {
 	partial->Set(VSPEC::GAMENAME, String::Empty);
 	partial->Set(VSPEC::SYSTEMPREFIX, String::Empty);
 	partial->Set(VSPEC::OPENROMFILENAME, String::Empty);
-	partial->Set(VSPEC::OVERRIDE_DEFAULTMAXINTENSITY, 500000);
+	partial->Set(VSPEC::OVERRIDE_DEFAULTMAXINTENSITY, 100000);
 	partial->Set(VSPEC::SYNCSETTINGS, String::Empty);
 	partial->Set(VSPEC::MEMORYDOMAINS_BLACKLISTEDDOMAINS, gcnew array<String ^>{});
 	partial->Set(VSPEC::SYSTEM, String::Empty);
@@ -203,7 +204,9 @@ void VanguardClientInitializer::StartVanguardClient()
 		gcnew SyncObjectSingleton::ActionDelegate(&EmuThreadExecute);
 
 	// Start everything
-	VanguardClient::configPaths = gcnew array<String ^>{};
+	VanguardClient::configPaths = gcnew array<String ^>{
+		System::IO::Path::Combine(VanguardClient::emuDir, "melonDS.ini")
+	};
 
 	VanguardClient::StartClient();
 	VanguardClient::RegisterVanguardSpec();
@@ -263,33 +266,41 @@ void VanguardClient::StopClient()
 
 #pragma region MemoryDomains
 //For some reason if we do these in another class, melon won't build
-namespace Domains
+public
+ref class MainRAM : RTCV::CorruptCore::IMemoryDomain
 {
+public:
+	property System::String^ Name { virtual System::String^ get(); }
+	property long long Size { virtual long long get(); }
+	property int WordSize { virtual int get(); }
+	property bool BigEndian { virtual bool get(); }
+	virtual unsigned char PeekByte(long long addr);
+	virtual array<unsigned char> ^ PeekBytes(long long address, int length);
+	virtual void PokeByte(long long addr, unsigned char val);
+};
 
-	public
-	ref class MainRAM : RTCV::CorruptCore::IMemoryDomain
-	{
-	public:
-		property System::String^ Name { virtual System::String^ get(); }
-		property long long Size { virtual long long get(); }
-		property int WordSize { virtual int get(); }
-		property bool BigEndian { virtual bool get(); }
-		virtual unsigned char PeekByte(long long addr);
-		virtual array<unsigned char> ^ PeekBytes(long long address, int length);
-		virtual void PokeByte(long long addr, unsigned char val);
-	};
-
-	ref class VRAM : RTCV::CorruptCore::IMemoryDomain
-	{
-	public:
-		property System::String^ Name { virtual System::String^ get(); }
-		property long long Size { virtual long long get(); }
-		property int WordSize { virtual int get(); }
-		property bool BigEndian { virtual bool get(); }
-		virtual unsigned char PeekByte(long long addr);
-		virtual array<unsigned char> ^ PeekBytes(long long address, int length);
-		virtual void PokeByte(long long addr, unsigned char val);
-	};
+ref class VRAM : RTCV::CorruptCore::IMemoryDomain
+{
+public:
+	property System::String^ Name { virtual System::String^ get(); }
+	property long long Size { virtual long long get(); }
+	property int WordSize { virtual int get(); }
+	property bool BigEndian { virtual bool get(); }
+	virtual unsigned char PeekByte(long long addr);
+	virtual array<unsigned char> ^ PeekBytes(long long address, int length);
+	virtual void PokeByte(long long addr, unsigned char val);
+};
+ref class CartROM : RTCV::CorruptCore::IMemoryDomain
+{
+public:
+	property System::String^ Name { virtual System::String^ get(); }
+	property long long Size { virtual long long get(); }
+	property int WordSize { virtual int get(); }
+	property bool BigEndian { virtual bool get(); }
+	virtual unsigned char PeekByte(long long addr);
+	virtual array<unsigned char> ^ PeekBytes(long long address, int length);
+	virtual void PokeByte(long long addr, unsigned char val);
+};
 
 #define WORD_SIZE 4
 #define BIG_ENDIAN false
@@ -305,57 +316,57 @@ namespace Domains
 
 delegate void MessageDelegate(Object^);
 #pragma region MainRam
-	String^ MainRAM::Name::get()
-	{
-		return "MainRAM";
-	}
+String^ MainRAM::Name::get()
+{
+	return "MainRAM";
+}
 
-	long long MainRAM::Size::get()
-	{
-		return MAIN_RAM_SIZE;
-	}
+long long MainRAM::Size::get()
+{
+	return MAIN_RAM_SIZE;
+}
 
-	int MainRAM::WordSize::get()
-	{
-		return WORD_SIZE;
-	}
+int MainRAM::WordSize::get()
+{
+	return WORD_SIZE;
+}
 
-	bool MainRAM::BigEndian::get()
-	{
-		return BIG_ENDIAN;
-	}
+bool MainRAM::BigEndian::get()
+{
+	return BIG_ENDIAN;
+}
 
-	unsigned char MainRAM::PeekByte(long long addr)
+unsigned char MainRAM::PeekByte(long long addr)
+{
+	if (addr < MAIN_RAM_SIZE)
 	{
-		if (addr < MAIN_RAM_SIZE)
-		{
-			// Convert the address
-			addr += MAIN_RAM_OFFSET;
+		// Convert the address
+		addr = addr + MAIN_RAM_OFFSET;
 
-			return NDS::ARM9Read8(static_cast<u32>(addr));
-		}
-		return 0;
+		return NDS::ARM9Read8(static_cast<u32>(addr));
 	}
+	return 0;
+}
 
-	void MainRAM::PokeByte(long long addr, unsigned char val)
+void MainRAM::PokeByte(long long addr, unsigned char val)
+{
+	if (addr < MAIN_RAM_SIZE)
 	{
-		if (addr < MAIN_RAM_SIZE)
-		{
-			// Convert the address
-			addr += MAIN_RAM_OFFSET;
-			NDS::ARM9Write8(static_cast<u32>(addr), val);
-		}
+		// Convert the address
+		addr = addr + MAIN_RAM_OFFSET;
+		NDS::ARM9Write8(static_cast<u32>(addr), val);
 	}
+}
 
-	array<unsigned char>^ MainRAM::PeekBytes(long long address, int length)
+array<unsigned char>^ MainRAM::PeekBytes(long long address, int length)
+{
+	array<unsigned char> ^ bytes = gcnew array<unsigned char>(length);
+	for (int i = 0; i < length; i++)
 	{
-		array<unsigned char> ^ bytes = gcnew array<unsigned char>(length);
-		for (int i = 0; i < length; i++)
-		{
-			bytes[i] = PeekByte(address + i);
-		}
-		return bytes;
+		bytes[i] = PeekByte(address + i);
 	}
+	return bytes;
+}
 #pragma endregion
 	
 #pragma region VRAM
@@ -366,7 +377,7 @@ delegate void MessageDelegate(Object^);
 
 	long long VRAM::Size::get()
 	{
-		return MAIN_RAM_SIZE;
+		return VRAM_SIZE;
 	}
 
 	int VRAM::WordSize::get()
@@ -384,7 +395,7 @@ delegate void MessageDelegate(Object^);
 		if (addr < VRAM_SIZE)
 		{
 			// Convert the address
-			addr += VRAM_OFFSET;
+			addr = addr + VRAM_OFFSET;
 
 			return NDS::ARM9Read8(static_cast<u32>(addr));
 		}
@@ -396,7 +407,7 @@ delegate void MessageDelegate(Object^);
 		if (addr < VRAM_SIZE)
 		{
 			// Convert the address
-			addr += VRAM_OFFSET;
+			addr = addr + VRAM_OFFSET;
 			NDS::ARM9Write8(static_cast<u32>(addr), val);
 		}
 	}
@@ -412,13 +423,64 @@ delegate void MessageDelegate(Object^);
 	}
 #pragma endregion
 
+#pragma region CARTROM
+	String^ CartROM::Name::get()
+	{
+		return "CartROM";
+	}
 
-}
+	long long CartROM::Size::get()
+	{
+		return NDSCart::CartROMSize;
+	}
+
+	int CartROM::WordSize::get()
+	{
+		return WORD_SIZE;
+	}
+
+	bool CartROM::BigEndian::get()
+	{
+		return BIG_ENDIAN;
+	}
+
+	unsigned char CartROM::PeekByte(long long addr)
+	{
+		if (!NDSCart::CartInserted) return 0;
+
+		if (addr < NDSCart::CartROMSize)
+		{
+			return NDSCart::CartROM[addr];
+		}
+		return 0;
+	}
+
+	void CartROM::PokeByte(long long addr, unsigned char val)
+	{
+		if (!NDSCart::CartInserted) return;
+		if (addr < NDSCart::CartROMSize)
+		{
+			NDSCart::CartROM[addr] = val;
+		}
+	}
+
+	array<unsigned char>^ CartROM::PeekBytes(long long address, int length)
+	{
+		array<unsigned char> ^ bytes = gcnew array<unsigned char>(length);
+		for (int i = 0; i < length; i++)
+		{
+			bytes[i] = PeekByte(address + i);
+		}
+		return bytes;
+	}
+#pragma endregion
+
 static array<MemoryDomainProxy ^> ^
 GetInterfaces() {
-	array<MemoryDomainProxy ^> ^ interfaces = gcnew array<MemoryDomainProxy ^>(2);
-	interfaces[0] = (gcnew MemoryDomainProxy(gcnew Domains::MainRAM));
-	interfaces[0] = (gcnew MemoryDomainProxy(gcnew Domains::VRAM));
+	array<MemoryDomainProxy ^> ^ interfaces = gcnew array<MemoryDomainProxy ^>(3);
+	interfaces[0] = (gcnew MemoryDomainProxy(gcnew MainRAM));
+	interfaces[1] = (gcnew MemoryDomainProxy(gcnew VRAM));
+	interfaces[2] = (gcnew MemoryDomainProxy(gcnew CartROM));
 	return interfaces;
 }
 
@@ -430,15 +492,21 @@ static bool RefreshDomains(bool updateSpecs = true)
 
 	// Bruteforce it since domains can change inconsistently in some configs and we keep code
 	// consistent between implementations
-	bool domainsChanged = oldInterfaces->Length != newInterfaces->Length;
-	for (int i = 0; i < oldInterfaces->Length; i++)
+	bool domainsChanged = false;
+	if (oldInterfaces == nullptr)
+		domainsChanged = true;
+	else
 	{
-		if (domainsChanged)
-			break;
-		if (oldInterfaces[i]->Name != newInterfaces[i]->Name)
-			domainsChanged = true;
-		if (oldInterfaces[i]->Size != newInterfaces[i]->Size)
-			domainsChanged = true;
+		domainsChanged = oldInterfaces->Length != newInterfaces->Length;
+		for (int i = 0; i < oldInterfaces->Length; i++)
+		{
+			if (domainsChanged)
+				break;
+			if (oldInterfaces[i]->Name != newInterfaces[i]->Name)
+				domainsChanged = true;
+			if (oldInterfaces[i]->Size != newInterfaces[i]->Size)
+				domainsChanged = true;
+		}
 	}
 
 	if (updateSpecs)
@@ -448,7 +516,7 @@ static bool RefreshDomains(bool updateSpecs = true)
 			NetcoreCommands::REMOTE_EVENT_DOMAINSUPDATED, domainsChanged, true);
 	}
 
-	return true;
+	return domainsChanged;
 }
 
 #pragma endregion
@@ -498,27 +566,22 @@ void VanguardClientUnmanaged::LOAD_GAME_DONE()
 		gameDone->Set(VSPEC::SYSTEMCORE, "DS");
 		gameDone->Set(VSPEC::SYNCSETTINGS, "");
 		gameDone->Set(VSPEC::MEMORYDOMAINS_BLACKLISTEDDOMAINS, gcnew array<String ^>{});
-		gameDone->Set(VSPEC::MEMORYDOMAINS_INTERFACES, GetInterfaces());
-		gameDone->Set(VSPEC::CORE_DISKBASED, true);
+		gameDone->Set(VSPEC::CORE_DISKBASED, false);
 
 		String ^ oldGame = AllSpec::VanguardSpec->Get<String ^>(VSPEC::GAMENAME);
 
-		//todo
-		String ^ gameName =	Helpers::utf8StringToSystemString("");
+		String ^ gameName = VanguardClientUnmanaged::GAME_NAME.ToString();
 
 		char replaceChar = L'-';
 		gameDone->Set(VSPEC::GAMENAME, CorruptCore_Extensions::MakeSafeFilename(gameName, replaceChar));
 
 		//todo
-		String ^ syncsettings = "";
-		gameDone->Set(VSPEC::SYNCSETTINGS, syncsettings);
+		//String ^ syncsettings = "";
+//		gameDone->Set(VSPEC::SYNCSETTINGS, syncsettings);
 
 		AllSpec::VanguardSpec->Update(gameDone, true, false);
 
-		bool domainsChanged = RefreshDomains(false);
-		// This is local. If the domains changed it propgates over netcore
-		LocalNetCoreRouter::Route(NetcoreCommands::CORRUPTCORE,
-			NetcoreCommands::REMOTE_EVENT_DOMAINSUPDATED, domainsChanged, true);
+		bool domainsChanged = RefreshDomains(true);
 
 		if (oldGame != gameName)
 		{
@@ -532,11 +595,14 @@ void VanguardClientUnmanaged::LOAD_GAME_DONE()
 	}
 	VanguardClient::loading = false;
 }
-
 void VanguardClientUnmanaged::GAME_CLOSED()
 {
 	AllSpec::VanguardSpec->Update(VSPEC::OPENROMFILENAME, "", true, true);
 }
+
+
+int VanguardClientUnmanaged::GAME_NAME = 1;
+
 #pragma endregion
 
 /*ENUMS FOR THE SWITCH STATEMENT*/
@@ -591,31 +657,23 @@ inline COMMANDS CheckCommand(String ^ inString)
 /* IMPLEMENT YOUR COMMANDS HERE */
 void VanguardClient::LoadRom(String ^ filename)
 {
-	String ^ currentOpenRom = "";
-	if (AllSpec::VanguardSpec->Get<String ^>(VSPEC::OPENROMFILENAME) != "")
-		currentOpenRom = AllSpec::VanguardSpec->Get<String ^>(VSPEC::OPENROMFILENAME);
+	std::string path = Helpers::systemStringToUtf8String(filename);
+	loading = true;
 
-	// Game is not running
-	if (currentOpenRom != filename)
+	int prevstatus = EmuRunning;
+	EmuRunning = 2;
+	while (EmuStatus != 2);
+	TryLoadROM((char*)path.c_str(), prevstatus);
+
+	// We have to do it this way to prevent deadlock due to synced calls. It sucks but it's required
+	// at the moment
+	while (loading)
 	{
-		std::string path = Helpers::systemStringToUtf8String(filename);
-		loading = true;
-
-		int prevstatus = EmuRunning;
-		EmuRunning = 2;
-		while (EmuStatus != 2);
-		TryLoadROM((char*)path.c_str(), prevstatus);
-
-		// We have to do it this way to prevent deadlock due to synced calls. It sucks but it's required
-		// at the moment
-		while (loading)
-		{
-			Thread::Sleep(20);
-			System::Windows::Forms::Application::DoEvents();
-		}
-
-		Thread::Sleep(100);  // Give the emu thread a chance to recover
+		Thread::Sleep(20);
+		System::Windows::Forms::Application::DoEvents();
 	}
+
+	Thread::Sleep(10);  // Give the emu thread a chance to recover
 	return;
 }
 
@@ -646,7 +704,7 @@ void StopGame()
 
 void Quit()
 {
-	uiQuit();
+	System::Environment::Exit(0);
 }
 
 void AllSpecsSent()
@@ -697,8 +755,7 @@ void VanguardClient::OnMessageReceived(Object ^ sender, NetCoreEventArgs ^ e)
 		String ^ quickSlotName = Key + ".timejump";
 		// Get the prefix for the state
 
-		//todo
-		String ^ gameName =	Helpers::utf8StringToSystemString("");
+		String ^ gameName = VanguardClientUnmanaged::GAME_NAME.ToString();
 
 		char replaceChar = L'-';
 		String ^ prefix = CorruptCore_Extensions::MakeSafeFilename(gameName, replaceChar);
@@ -770,7 +827,8 @@ void VanguardClient::OnMessageReceived(Object ^ sender, NetCoreEventArgs ^ e)
 	case REMOTE_EVENT_EMU_MAINFORM_CLOSE:
 	case REMOTE_EVENT_CLOSEEMULATOR:
 	{
-		// Stop the game first
+		uiQuit();
+		Quit();
 	}
 	break;
 

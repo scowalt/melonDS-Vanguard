@@ -1769,7 +1769,15 @@ void ARM9Write8(u32 addr, u8 val)
         return;
 
     case 0x05000000:
-    case 0x06000000:
+	case 0x06000000:
+		switch (addr & 0x00E00000)
+		{
+		case 0x00000000: GPU::WriteVRAM_ABG<u8>(addr, val); return;
+		case 0x00200000: GPU::WriteVRAM_BBG<u8>(addr, val); return;
+		case 0x00400000: GPU::WriteVRAM_AOBJ<u8>(addr, val); return;
+		case 0x00600000: GPU::WriteVRAM_BOBJ<u8>(addr, val); return;
+		default:         GPU::WriteVRAM_LCDC<u8>(addr, val); return;
+		}
     case 0x07000000:
         // checkme
         return;

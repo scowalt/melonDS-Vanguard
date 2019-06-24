@@ -23,7 +23,7 @@
 #include "ARM.h"
 #include "CRC32.h"
 #include "Platform.h"
-
+#include "Vanguard/VanguardClient.h"
 
 namespace NDSCart_SRAM
 {
@@ -891,6 +891,8 @@ bool LoadROM(const char* path, const char* sram, bool direct)
     fread(&gamecode, 4, 1, f);
     printf("Game code: %c%c%c%c\n", gamecode&0xFF, (gamecode>>8)&0xFF, (gamecode>>16)&0xFF, gamecode>>24);
 
+	VanguardClientUnmanaged::GAME_NAME = gamecode;
+
     CartROM = new u8[CartROMSize];
     memset(CartROM, 0, CartROMSize);
     fseek(f, 0, SEEK_SET);
@@ -998,14 +1000,15 @@ void RelocateSave(const char* path, bool write)
 
 void ReadROM(u32 addr, u32 len, u32 offset)
 {
-    if (!CartInserted) return;
+	if (!CartInserted) return;
 
-    if (addr >= CartROMSize) return;
-    if ((addr+len) > CartROMSize)
-        len = CartROMSize - addr;
+	if (addr >= CartROMSize) return;
+	if ((addr + len) > CartROMSize)
+		len = CartROMSize - addr;
 
-    memcpy(DataOut+offset, CartROM+addr, len);
+	memcpy(DataOut + offset, CartROM + addr, len);
 }
+
 
 void ReadROM_B7(u32 addr, u32 len, u32 offset)
 {

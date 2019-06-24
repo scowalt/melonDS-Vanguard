@@ -1582,6 +1582,7 @@ void Stop(bool internal)
     if (!internal) // if shutting down from the UI thread, wait till the emu thread has stopped
         while (EmuStatus != 2);
     RunningSomething = false;
+	VanguardClientUnmanaged::GAME_CLOSED();
 
     uiWindowSetTitle(MainWindow, "melonDS " MELONDS_VERSION);
 

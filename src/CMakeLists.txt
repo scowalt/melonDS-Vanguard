@@ -40,16 +40,6 @@ file(GLOB CLR_FILES
 				"Vanguard/VanguardClient.cpp"
 			)
 
-include_external_msproject(
-    CorruptCore ${PROJECT_SOURCE_DIR}/../../RTCV/Source/Libraries/CorruptCore/CorruptCore.csproj
-    TYPE B5633A86-DC66-4723-88EB-7DFC95458072)
-include_external_msproject(
-    NetCore ${PROJECT_SOURCE_DIR}/../../RTCV/Source/Libraries/NetCore/NetCore.csproj
-    TYPE 7E106AEC-5614-4206-9E4D-25759C90E8AE)
-include_external_msproject(
-    Vanguard ${PROJECT_SOURCE_DIR}/../../RTCV/Source/Libraries/Vanguard/Vanguard.csproj
-    TYPE 364C705E-B7AB-4A94-A59B-88899CE65958)
-
 set_source_files_properties(${CLR_FILES} PROPERTIES COMPILE_FLAGS "/clr /EHa /Zc:twoPhase-")
 set_target_properties(${PROJECT_NAME} PROPERTIES VS_DOTNET_REFERENCES_COPY_LOCAL ON )
 set_target_properties(${PROJECT_NAME} PROPERTIES DOTNET_TARGET_FRAMEWORK_VERSION "v4.7.1")

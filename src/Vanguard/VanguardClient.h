@@ -9,5 +9,6 @@ public:
 	static void LOAD_GAME_DONE();
 	static void GAME_CLOSED();
 	static void CLOSE_GAME();
+	static int GAME_NAME;
 	static void InvokeEmuThread();
 };
