@@ -28,8 +28,6 @@ add_library(core STATIC
 	Wifi.cpp
 	WifiAP.cpp
 	Vanguard/Helpers.hpp
-	Vanguard/MelonMemoryDomains.h
-	Vanguard/MelonMemoryDomains.cpp
 	Vanguard/VanguardClient.cpp
 )
 

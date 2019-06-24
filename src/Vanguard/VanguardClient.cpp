@@ -5,7 +5,6 @@
 
 #include <string>
 
-#include "MelonMemoryDomains.h"
 #include "VanguardClient.h"
 #include "VanguardClientInitializer.h"
 #include "Helpers.hpp"
@@ -265,6 +264,12 @@ void VanguardClient::StopClient()
 }
 
 #pragma region MemoryDomains
+
+void UpdateWramDomains(int arm7Size, int arm9Size)
+{
+	
+}
+
 //For some reason if we do these in another class, melon won't build
 public
 ref class MainRAM : RTCV::CorruptCore::IMemoryDomain
@@ -301,6 +306,29 @@ public:
 	virtual array<unsigned char> ^ PeekBytes(long long address, int length);
 	virtual void PokeByte(long long addr, unsigned char val);
 };
+ref class SharedWRAM : RTCV::CorruptCore::IMemoryDomain
+{
+public:
+	property System::String^ Name { virtual System::String^ get(); }
+	property long long Size { virtual long long get(); }
+	property int WordSize { virtual int get(); }
+	property bool BigEndian { virtual bool get(); }
+	virtual unsigned char PeekByte(long long addr);
+	virtual array<unsigned char> ^ PeekBytes(long long address, int length);
+	virtual void PokeByte(long long addr, unsigned char val);
+};
+
+ref class Arm7WRAM : RTCV::CorruptCore::IMemoryDomain
+{
+public:
+	property System::String^ Name { virtual System::String^ get(); }
+	property long long Size { virtual long long get(); }
+	property int WordSize { virtual int get(); }
+	property bool BigEndian { virtual bool get(); }
+	virtual unsigned char PeekByte(long long addr);
+	virtual array<unsigned char> ^ PeekBytes(long long address, int length);
+	virtual void PokeByte(long long addr, unsigned char val);
+};
 
 #define WORD_SIZE 4
 #define BIG_ENDIAN false
@@ -308,6 +336,9 @@ public:
 #define MAIN_RAM_OFFSET 0x02000000
 #define VRAM_OFFSET 0x06000000
 #define VRAM_SIZE 0x00800000
+
+#define SHAREDWRAM_SIZE 0x8000
+#define ARM7WRAM_SIZE 0x10000
 
 #define VRAM_ABG_OFFSET 0x00000000
 #define VRAM_BBG_OFFSET 0x00200000
@@ -475,12 +506,112 @@ array<unsigned char>^ MainRAM::PeekBytes(long long address, int length)
 	}
 #pragma endregion
 
+#pragma region SharedWRAM
+	String^ SharedWRAM::Name::get()
+	{
+		return "SharedWRAM";
+	}
+
+	long long SharedWRAM::Size::get()
+	{
+		return SHAREDWRAM_SIZE;
+	}
+
+	int SharedWRAM::WordSize::get()
+	{
+		return WORD_SIZE;
+	}
+
+	bool SharedWRAM::BigEndian::get()
+	{
+		return BIG_ENDIAN;
+	}
+
+	unsigned char SharedWRAM::PeekByte(long long addr)
+	{
+		if (addr < SHAREDWRAM_SIZE)
+		{
+			return NDS::SharedWRAM[addr];
+		}
+		return 0;
+	}
+
+	void SharedWRAM::PokeByte(long long addr, unsigned char val)
+	{
+		if (addr < SHAREDWRAM_SIZE)
+		{
+			NDS::SharedWRAM[addr] = val;
+		}
+	}
+
+	array<unsigned char>^ SharedWRAM::PeekBytes(long long address, int length)
+	{
+		array<unsigned char> ^ bytes = gcnew array<unsigned char>(length);
+		for (int i = 0; i < length; i++)
+		{
+			bytes[i] = PeekByte(address + i);
+		}
+		return bytes;
+	}
+#pragma endregion
+
+#pragma region Arm7WRAM
+	String^ Arm7WRAM::Name::get()
+	{
+		return "Arm7WRAM";
+	}
+
+	long long Arm7WRAM::Size::get()
+	{
+		return ARM7WRAM_SIZE;
+	}
+
+	int Arm7WRAM::WordSize::get()
+	{
+		return WORD_SIZE;
+	}
+
+	bool Arm7WRAM::BigEndian::get()
+	{
+		return BIG_ENDIAN;
+	}
+
+	unsigned char Arm7WRAM::PeekByte(long long addr)
+	{
+		if (addr < ARM7WRAM_SIZE)
+		{
+			return NDS::ARM7WRAM[addr];
+		}
+		return 0;
+	}
+
+	void Arm7WRAM::PokeByte(long long addr, unsigned char val)
+	{
+		if (addr < ARM7WRAM_SIZE)
+		{
+			NDS::ARM7WRAM[addr] = val;
+		}
+	}
+
+	array<unsigned char>^ Arm7WRAM::PeekBytes(long long address, int length)
+	{
+		array<unsigned char> ^ bytes = gcnew array<unsigned char>(length);
+		for (int i = 0; i < length; i++)
+		{
+			bytes[i] = PeekByte(address + i);
+		}
+		return bytes;
+	}
+#pragma endregion
+
 static array<MemoryDomainProxy ^> ^
 GetInterfaces() {
-	array<MemoryDomainProxy ^> ^ interfaces = gcnew array<MemoryDomainProxy ^>(3);
+	array<MemoryDomainProxy ^> ^ interfaces = gcnew array<MemoryDomainProxy ^>(5);
 	interfaces[0] = (gcnew MemoryDomainProxy(gcnew MainRAM));
-	interfaces[1] = (gcnew MemoryDomainProxy(gcnew VRAM));
-	interfaces[2] = (gcnew MemoryDomainProxy(gcnew CartROM));
+	interfaces[1] = (gcnew MemoryDomainProxy(gcnew SharedWRAM));
+	interfaces[2] = (gcnew MemoryDomainProxy(gcnew Arm7WRAM));
+	interfaces[3] = (gcnew MemoryDomainProxy(gcnew VRAM));
+	interfaces[4] = (gcnew MemoryDomainProxy(gcnew CartROM));
 	return interfaces;
 }
 

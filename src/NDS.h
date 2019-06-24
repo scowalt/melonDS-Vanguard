@@ -123,6 +123,8 @@ extern u8 ARM7BIOS[0x4000];
 #define MAIN_RAM_SIZE 0x400000
 
 extern u8 MainRAM[MAIN_RAM_SIZE];
+extern u8 SharedWRAM[0x8000];
+extern u8 ARM7WRAM[0x10000];
 
 bool Init();
 void DeInit();
