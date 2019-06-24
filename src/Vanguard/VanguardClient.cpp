@@ -229,6 +229,8 @@ void VanguardClientInitializer::Initialize()
 
 void VanguardClient::StartClient()
 {
+	NetCore_Extensions::ConsoleHelper::CreateConsole(logPath);
+	NetCore_Extensions::ConsoleHelper::HideConsole();
 	// Can't use contains
 	auto args = Environment::GetCommandLineArgs();
 	for (int i = 0; i < args->Length; i++)
@@ -242,8 +244,6 @@ void VanguardClient::StartClient()
 			attached = true;
 		}
 	}
-	NetCore_Extensions::ConsoleHelper::CreateConsole(logPath);
-	NetCore_Extensions::ConsoleHelper::HideConsole();
 
 	receiver = gcnew NetCoreReceiver();
 	receiver->Attached = attached;
@@ -688,7 +688,8 @@ bool VanguardClient::SaveState(String ^ filename, bool wait)
 {
 	if (true)
 	{
-		const char* converted_filename = Helpers::systemStringToUtf8String(filename).c_str();
+		std::string s = Helpers::systemStringToUtf8String(filename);
+		const char* converted_filename = s.c_str();
 		Main::SaveState(converted_filename);
 		return true;
 	}
