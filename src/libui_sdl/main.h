@@ -13,3 +13,4 @@ extern volatile int EmuStatus;
 extern void TryLoadROM(char* file, int prevstatus);
 extern void Stop(bool internal);
 extern void CloseAllDialogs();
+extern uiWindow* MainWindow;

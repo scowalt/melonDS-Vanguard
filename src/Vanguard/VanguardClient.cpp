@@ -64,14 +64,19 @@ public:
 	static bool LoadState(std::string filename);
 	static bool SaveState(String ^ filename, bool wait);
 
-
+	static void LoadWindowPosition();
+	static void SaveWindowPosition();
 	static String ^ emuDir = IO::Path::GetDirectoryName(Assembly::GetExecutingAssembly()->Location);
 	static String ^ logPath = IO::Path::Combine(emuDir, "EMU_LOG.txt");
+
+	static System::Timers::Timer^ SettingsTimer;
+	static void SettingsSaveCallback(Object^ sender, System::Timers::ElapsedEventArgs^ e);
 
 	static array<String ^> ^ configPaths;
 
 	static volatile bool loading = false;
 	static bool attached = false;
+	static Object^ GenericLockObject = gcnew Object();
 };
 
 static void EmuThreadExecute(Action ^ callback)
@@ -106,7 +111,11 @@ getDefaultPartial() {
 	partial->Set(VSPEC::OPENROMFILENAME, String::Empty);
 	partial->Set(VSPEC::OVERRIDE_DEFAULTMAXINTENSITY, 100000);
 	partial->Set(VSPEC::SYNCSETTINGS, String::Empty);
-	partial->Set(VSPEC::MEMORYDOMAINS_BLACKLISTEDDOMAINS, gcnew array<String ^>{});
+	partial->Set(VSPEC::MEMORYDOMAINS_BLACKLISTEDDOMAINS, gcnew array<String ^>{
+		"CartROM",
+		"SharedWRAM",
+		"ARM7WRAM"
+	});
 	partial->Set(VSPEC::SYSTEM, String::Empty);
 
 	return partial;
@@ -143,8 +152,7 @@ void VanguardClient::RegisterVanguardSpec()
 }
 
 // Lifted from Bizhawk
-static Assembly ^
-CurrentDomain_AssemblyResolve(Object ^ sender, ResolveEventArgs ^ args) {
+static Assembly^ CurrentDomain_AssemblyResolve(Object ^ sender, ResolveEventArgs ^ args) {
 	try
 	{
 		Trace::WriteLine("Entering AssemblyResolve\n" + args->Name + "\n" +
@@ -192,15 +200,21 @@ CurrentDomain_AssemblyResolve(Object ^ sender, ResolveEventArgs ^ args) {
 	}
 }
 
+void VanguardClient::SettingsSaveCallback(Object^ sender, System::Timers::ElapsedEventArgs^ e)
+{
+	VanguardClient::SaveWindowPosition();
+}
 // Create our VanguardClient
 void VanguardClientInitializer::StartVanguardClient()
 {
 	System::Windows::Forms::Form ^ dummy = gcnew System::Windows::Forms::Form();
 	IntPtr Handle = dummy->Handle;
 	SyncObjectSingleton::SyncObject = dummy;
+	SyncObjectSingleton::EmuInvokeDelegate = gcnew SyncObjectSingleton::ActionDelegate(&EmuThreadExecute);
 
-	SyncObjectSingleton::EmuInvokeDelegate =
-		gcnew SyncObjectSingleton::ActionDelegate(&EmuThreadExecute);
+	//Some callbacks (such as window position changed) just don't work. Because of this, use a timer to save those settings every 5 minutes.
+	VanguardClient::SettingsTimer = gcnew System::Timers::Timer(300000);
+	VanguardClient::SettingsTimer->Elapsed += gcnew System::Timers::ElapsedEventHandler(&VanguardClient::SettingsSaveCallback);
 
 	// Start everything
 	VanguardClient::configPaths = gcnew array<String ^>{
@@ -214,6 +228,9 @@ void VanguardClientInitializer::StartVanguardClient()
 	// Lie if we're in attached
 	if (VanguardClient::attached)
 		VanguardConnector::ImplyClientConnected();
+
+	VanguardClient::LoadWindowPosition();
+
 }
 
 // Create our VanguardClient
@@ -248,19 +265,42 @@ void VanguardClient::StartClient()
 	receiver->Attached = attached;
 	receiver->MessageReceived += gcnew EventHandler<NetCoreEventArgs ^>(&VanguardClient::OnMessageReceived);
 	connector = gcnew VanguardConnector(receiver);
+	VanguardClient::SettingsTimer->Enabled = true;
 }
+
 
 void VanguardClient::RestartClient()
 {
-	connector->Kill();
-	connector = nullptr;
-	StartClient();
+	VanguardClient::StopClient();
+	VanguardClient::StartClient();
 }
 
 void VanguardClient::StopClient()
 {
 	connector->Kill();
 	connector = nullptr;
+	VanguardClient::SettingsTimer->Enabled = false;
+}
+void VanguardClient::LoadWindowPosition()
+{
+	if (connector == nullptr)
+		return;
+
+	int winX, winY;
+	String^ s = RTCV::NetCore::Params::ReadParam("MELON_LOCATION");
+	if (s == nullptr)
+		return;
+
+	array<String^>^ loc = s->Split(',');
+	winX = Int32::Parse(loc[0]);
+	winY = Int32::Parse(loc[1]);
+	uiWindowSetPosition(MainWindow, winX, winY);
+}
+void VanguardClient::SaveWindowPosition()
+{
+	int winX = 0,winY = 0;
+	uiWindowPosition(MainWindow, &winX, &winY);
+	RTCV::NetCore::Params::SetParam("MELON_LOCATION", winX + "," + winY);
 }
 
 #pragma region MemoryDomains
@@ -558,7 +598,7 @@ array<unsigned char>^ MainRAM::PeekBytes(long long address, int length)
 #pragma region Arm7WRAM
 	String^ Arm7WRAM::Name::get()
 	{
-		return "Arm7WRAM";
+		return "ARM7WRAM";
 	}
 
 	long long Arm7WRAM::Size::get()
@@ -696,7 +736,6 @@ void VanguardClientUnmanaged::LOAD_GAME_DONE()
 		gameDone->Set(VSPEC::SYSTEMPREFIX, "melonDS");
 		gameDone->Set(VSPEC::SYSTEMCORE, "DS");
 		gameDone->Set(VSPEC::SYNCSETTINGS, "");
-		gameDone->Set(VSPEC::MEMORYDOMAINS_BLACKLISTEDDOMAINS, gcnew array<String ^>{});
 		gameDone->Set(VSPEC::CORE_DISKBASED, false);
 
 		String ^ oldGame = AllSpec::VanguardSpec->Get<String ^>(VSPEC::GAMENAME);
@@ -730,7 +769,6 @@ void VanguardClientUnmanaged::GAME_CLOSED()
 {
 	AllSpec::VanguardSpec->Update(VSPEC::OPENROMFILENAME, "", true, true);
 }
-
 
 int VanguardClientUnmanaged::GAME_NAME = 1;
 
@@ -842,6 +880,7 @@ void Quit()
 void AllSpecsSent()
 {
 	AllSpec::VanguardSpec->Update(VSPEC::EMUDIR, VanguardClient::emuDir, true, true);
+	VanguardClient::LoadWindowPosition();
 }
 #pragma endregion
 
@@ -959,8 +998,14 @@ void VanguardClient::OnMessageReceived(Object ^ sender, NetCoreEventArgs ^ e)
 	case REMOTE_EVENT_EMU_MAINFORM_CLOSE:
 	case REMOTE_EVENT_CLOSEEMULATOR:
 	{
-		uiQuit();
-		Quit();
+		//Don't allow re-entry on this
+		Monitor::Enter(VanguardClient::GenericLockObject);
+		{
+			VanguardClient::SaveWindowPosition();
+			uiQuit();
+			Quit();
+		}
+		Monitor::Exit;
 	}
 	break;
 
