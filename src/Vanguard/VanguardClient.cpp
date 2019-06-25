@@ -358,7 +358,7 @@ public:
 	virtual void PokeByte(long long addr, unsigned char val);
 };
 
-ref class Arm7WRAM : RTCV::CorruptCore::IMemoryDomain
+ref class ARM7WRAM : RTCV::CorruptCore::IMemoryDomain
 {
 public:
 	property System::String^ Name { virtual System::String^ get(); }
@@ -596,27 +596,27 @@ array<unsigned char>^ MainRAM::PeekBytes(long long address, int length)
 #pragma endregion
 
 #pragma region Arm7WRAM
-	String^ Arm7WRAM::Name::get()
+	String^ ARM7WRAM::Name::get()
 	{
 		return "ARM7WRAM";
 	}
 
-	long long Arm7WRAM::Size::get()
+	long long ARM7WRAM::Size::get()
 	{
 		return ARM7WRAM_SIZE;
 	}
 
-	int Arm7WRAM::WordSize::get()
+	int ARM7WRAM::WordSize::get()
 	{
 		return WORD_SIZE;
 	}
 
-	bool Arm7WRAM::BigEndian::get()
+	bool ARM7WRAM::BigEndian::get()
 	{
 		return BIG_ENDIAN;
 	}
 
-	unsigned char Arm7WRAM::PeekByte(long long addr)
+	unsigned char ARM7WRAM::PeekByte(long long addr)
 	{
 		if (addr < ARM7WRAM_SIZE)
 		{
@@ -625,7 +625,7 @@ array<unsigned char>^ MainRAM::PeekBytes(long long address, int length)
 		return 0;
 	}
 
-	void Arm7WRAM::PokeByte(long long addr, unsigned char val)
+	void ARM7WRAM::PokeByte(long long addr, unsigned char val)
 	{
 		if (addr < ARM7WRAM_SIZE)
 		{
@@ -633,7 +633,7 @@ array<unsigned char>^ MainRAM::PeekBytes(long long address, int length)
 		}
 	}
 
-	array<unsigned char>^ Arm7WRAM::PeekBytes(long long address, int length)
+	array<unsigned char>^ ARM7WRAM::PeekBytes(long long address, int length)
 	{
 		array<unsigned char> ^ bytes = gcnew array<unsigned char>(length);
 		for (int i = 0; i < length; i++)
@@ -649,7 +649,7 @@ GetInterfaces() {
 	array<MemoryDomainProxy ^> ^ interfaces = gcnew array<MemoryDomainProxy ^>(5);
 	interfaces[0] = (gcnew MemoryDomainProxy(gcnew MainRAM));
 	interfaces[1] = (gcnew MemoryDomainProxy(gcnew SharedWRAM));
-	interfaces[2] = (gcnew MemoryDomainProxy(gcnew Arm7WRAM));
+	interfaces[2] = (gcnew MemoryDomainProxy(gcnew ARM7WRAM));
 	interfaces[3] = (gcnew MemoryDomainProxy(gcnew VRAM));
 	interfaces[4] = (gcnew MemoryDomainProxy(gcnew CartROM));
 	return interfaces;
