@@ -1053,6 +1053,12 @@ int EmuThreadFunc(void* burp)
     return 44203;
 }
 
+void StopEmuThread()
+{
+    EmuRunning = 0;
+    SDL_WaitThread(EmuThread, NULL);
+}
+
 
 void OnAreaDraw(uiAreaHandler* handler, uiArea* area, uiAreaDrawParams* params)
 {
@@ -1221,8 +1227,8 @@ int OnAreaKeyEvent(uiAreaHandler* handler, uiArea* area, uiAreaKeyEvent* evt)
                 KeyHotkeyMask |= (1<<i);
 
         // REMOVE ME
-        if (evt->Scancode == 0x57) // F11
-            NDS::debug(0);
+        //if (evt->Scancode == 0x57) // F11
+        //    NDS::debug(0);
     }
 
     return 1;
@@ -1962,6 +1968,7 @@ int OnCloseWindow(uiWindow* window, void* blarg)
     while (EmuStatus != 3);
 
     CloseAllDialogs();
+    StopEmuThread();
     uiQuit();
     return 1;
 }
@@ -2005,6 +2012,7 @@ void OnCloseByMenu(uiMenuItem* item, uiWindow* window, void* blarg)
     while (EmuStatus != 3);
 
     CloseAllDialogs();
+    StopEmuThread();
     DestroyMainWindow();
     uiQuit();
 }
@@ -2802,9 +2810,6 @@ int main(int argc, char** argv)
     }
 
     uiMain();
-
-    EmuRunning = 0;
-    SDL_WaitThread(EmuThread, NULL);
 
     if (Joystick) SDL_JoystickClose(Joystick);
     if (AudioDevice) SDL_CloseAudioDevice(AudioDevice);
