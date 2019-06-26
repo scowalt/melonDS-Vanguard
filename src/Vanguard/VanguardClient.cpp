@@ -16,6 +16,7 @@
 #include <msclr/marshal_cppstd.h>
 #using < system.dll>
 #using < system.windows.forms.dll>
+#using < system.collections.dll>
 
 //If we provide just the dll name and then compile with /AI it works, but intellisense doesn't pick up on it, so we use a full relative path
 #using <../../../../../RTCV/Build/NetCore.dll>
@@ -66,6 +67,9 @@ public:
 
 	static void LoadWindowPosition();
 	static void SaveWindowPosition();
+	static String^ GetSyncSettings();
+	static void SetSyncSettings(String^ ss);
+
 	static String ^ emuDir = IO::Path::GetDirectoryName(Assembly::GetExecutingAssembly()->Location);
 	static String ^ logPath = IO::Path::Combine(emuDir, "EMU_LOG.txt");
 
@@ -298,17 +302,26 @@ void VanguardClient::LoadWindowPosition()
 }
 void VanguardClient::SaveWindowPosition()
 {
-	int winX = 0,winY = 0;
+	int winX = 0, winY = 0;
 	uiWindowPosition(MainWindow, &winX, &winY);
 	RTCV::NetCore::Params::SetParam("MELON_LOCATION", winX + "," + winY);
 }
+String^ VanguardClient::GetSyncSettings()
+{
+	Dictionary<String^, String^>^ ssDico = gcnew Dictionary<String^, String^>();
+	ssDico["ScreenRotation"] = Convert::ToString(ScreenRotation);
+	return JsonHelper::Serialize(ssDico);
+}
+void VanguardClient::SetSyncSettings(String^ ss)
+{
+	auto ssDico = JsonHelper::Deserialize<Dictionary<String^,String^>^>(ss);
+	System::String ^ out = "ass";
+	if (ssDico->TryGetValue("ScreenRotation", out)){}
+		ScreenRotation = Int32::Parse(out);
+	Trace::WriteLine(out);
+}
 
 #pragma region MemoryDomains
-
-void UpdateWramDomains(int arm7Size, int arm9Size)
-{
-	
-}
 
 //For some reason if we do these in another class, melon won't build
 public
@@ -735,7 +748,6 @@ void VanguardClientUnmanaged::LOAD_GAME_DONE()
 		gameDone->Set(VSPEC::SYSTEM, "melonDS");
 		gameDone->Set(VSPEC::SYSTEMPREFIX, "melonDS");
 		gameDone->Set(VSPEC::SYSTEMCORE, "DS");
-		gameDone->Set(VSPEC::SYNCSETTINGS, "");
 		gameDone->Set(VSPEC::CORE_DISKBASED, false);
 
 		String ^ oldGame = AllSpec::VanguardSpec->Get<String ^>(VSPEC::GAMENAME);
@@ -744,11 +756,7 @@ void VanguardClientUnmanaged::LOAD_GAME_DONE()
 
 		char replaceChar = L'-';
 		gameDone->Set(VSPEC::GAMENAME, CorruptCore_Extensions::MakeSafeFilename(gameName, replaceChar));
-
-		//todo
-		//String ^ syncsettings = "";
-//		gameDone->Set(VSPEC::SYNCSETTINGS, syncsettings);
-
+		
 		AllSpec::VanguardSpec->Update(gameDone, true, false);
 
 		bool domainsChanged = RefreshDomains(true);
@@ -911,8 +919,9 @@ void VanguardClient::OnMessageReceived(Object ^ sender, NetCoreEventArgs ^ e)
 
 		// Load up the sync settings
 		String ^ settingStr = AllSpec::VanguardSpec->Get<String ^>(VSPEC::SYNCSETTINGS);
-		if (settingStr != nullptr)
+		if (!String::IsNullOrEmpty(settingStr))
 		{
+			VanguardClient::SetSyncSettings(settingStr);
 		}
 		e->setReturnValue(LoadState(converted_path));
 	}
@@ -921,6 +930,9 @@ void VanguardClient::OnMessageReceived(Object ^ sender, NetCoreEventArgs ^ e)
 	case SAVESAVESTATE:
 	{
 		String ^ Key = (String ^)(advancedMessage->objectValue);
+
+		//Save the syncsettings
+		AllSpec::VanguardSpec->Set(VSPEC::SYNCSETTINGS, VanguardClient::GetSyncSettings());
 
 		// Build the shortname
 		String ^ quickSlotName = Key + ".timejump";
@@ -934,8 +946,7 @@ void VanguardClient::OnMessageReceived(Object ^ sender, NetCoreEventArgs ^ e)
 
 		String ^ path = nullptr;
 		// Build up our path
-		path = RtcCore::workingDir + IO::Path::DirectorySeparatorChar + "SESSION" +
-			IO::Path::DirectorySeparatorChar + prefix + "." + quickSlotName + ".State";
+		path = RtcCore::workingDir + IO::Path::DirectorySeparatorChar + "SESSION" + IO::Path::DirectorySeparatorChar + prefix + "." + quickSlotName + ".State";
 
 		// If the path doesn't exist, make it
 		IO::FileInfo ^ file = gcnew IO::FileInfo(path);

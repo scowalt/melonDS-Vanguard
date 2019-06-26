@@ -1,5 +1,5 @@
 #pragma once
-
+//RTC_Hijack - Move a bunch of stuff to a header so we can access it
 class Main
 {
 	public:
@@ -9,6 +9,7 @@ class Main
 };
 
 extern int EmuRunning;
+extern int ScreenRotation;
 extern volatile int EmuStatus;
 extern void TryLoadROM(char* file, int prevstatus);
 extern void Stop(bool internal);
