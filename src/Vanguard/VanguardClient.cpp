@@ -298,7 +298,9 @@ void VanguardClient::LoadWindowPosition()
 	array<String^>^ loc = s->Split(',');
 	winX = Int32::Parse(loc[0]);
 	winY = Int32::Parse(loc[1]);
+	uiWindowSetBorderless(MainWindow, true);
 	uiWindowSetPosition(MainWindow, winX, winY);
+	uiWindowSetBorderless(MainWindow, false);
 }
 void VanguardClient::SaveWindowPosition()
 {
@@ -315,9 +317,11 @@ String^ VanguardClient::GetSyncSettings()
 void VanguardClient::SetSyncSettings(String^ ss)
 {
 	auto ssDico = JsonHelper::Deserialize<Dictionary<String^,String^>^>(ss);
-	System::String ^ out = "ass";
-	if (ssDico->TryGetValue("ScreenRotation", out)){}
+	System::String ^ out = "";
+	if (ssDico->TryGetValue("ScreenRotation", out))
+	{
 		ScreenRotation = Int32::Parse(out);
+	}
 	Trace::WriteLine(out);
 }
 
