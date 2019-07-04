@@ -11,4 +11,5 @@ public:
 	static void CLOSE_GAME();
 	static int GAME_NAME;
 	static void InvokeEmuThread();
+	static bool RTC_OSD_ENABLED();
 };

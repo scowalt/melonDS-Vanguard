@@ -29,6 +29,7 @@
 #include "font.h"
 
 #include "PlatformConfig.h"
+#include "../Vanguard/VanguardClient.h"
 
 extern int WindowWidth, WindowHeight;
 
@@ -309,6 +310,7 @@ void RenderText(u32 color, const char* text, Item* item)
 void AddMessage(u32 color, const char* text)
 {
     if (!Config::ShowOSD) return;
+	if (!VanguardClientUnmanaged::RTC_OSD_ENABLED()) return;
 
     while (Rendering);
 

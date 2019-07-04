@@ -1,11 +1,11 @@
-cmake_minimum_required(VERSION 3.12)
+cmake_minimum_required(VERSION 3.13)
 
-cmake_policy(VERSION 3.12)
+cmake_policy(VERSION 3.13)
 if (POLICY CMP0076)
     cmake_policy(SET CMP0076 NEW)
 endif()
 
-add_compile_options(/Dstrncasecmp=_strnicmp /Dstrcasecmp=_stricmp /DWIN32 /D__WIN32__)
+add_compile_options(/D_CRT_SECURE_NO_WARNINGS /Dstrncasecmp=_strnicmp /Dstrcasecmp=_stricmp /DWIN32 /D__WIN32__)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 set(CMAKE_EXE_LINKER_FLAGS    "${CMAKE_EXE_LINKER_FLAGS} /MANIFEST:NO")

@@ -81,6 +81,7 @@ public:
 	static volatile bool loading = false;
 	static bool attached = false;
 	static Object^ GenericLockObject = gcnew Object();
+	static bool enableRTC = true;
 };
 
 static void EmuThreadExecute(Action ^ callback)
@@ -262,6 +263,10 @@ void VanguardClient::StartClient()
 		if (args[i] == "-ATTACHED")
 		{
 			attached = true;
+		}
+		if (args[i] == "-DISABLERTC")
+		{
+			enableRTC = false;
 		}
 	}
 
@@ -711,6 +716,8 @@ static bool RefreshDomains(bool updateSpecs = true)
 
 static void STEP_CORRUPT()  // errors trapped by CPU_STEP
 {
+	if (!VanguardClient::enableRTC)
+		return;
 	StepActions::Execute();
 	CPU_STEP_Count++;
 	bool autoCorrupt = RtcCore::AutoCorrupt;
@@ -729,6 +736,8 @@ static void STEP_CORRUPT()  // errors trapped by CPU_STEP
 #pragma region Hooks
 void VanguardClientUnmanaged::CORE_STEP()
 {
+	if (!VanguardClient::enableRTC)
+		return;
 	// Any step hook for corruption
 	STEP_CORRUPT();
 }
@@ -736,6 +745,8 @@ void VanguardClientUnmanaged::CORE_STEP()
 // This is on the main thread not the emu thread
 void VanguardClientUnmanaged::LOAD_GAME_START(std::string romPath)
 {
+	if (!VanguardClient::enableRTC)
+		return;
 	StepActions::ClearStepBlastUnits();
 	CPU_STEP_Count = 0;
 
@@ -745,6 +756,8 @@ void VanguardClientUnmanaged::LOAD_GAME_START(std::string romPath)
 
 void VanguardClientUnmanaged::LOAD_GAME_DONE()
 {
+	if (!VanguardClient::enableRTC)
+		return;
 	PartialSpec ^ gameDone = gcnew PartialSpec("VanguardSpec");
 
 	try
@@ -779,10 +792,21 @@ void VanguardClientUnmanaged::LOAD_GAME_DONE()
 }
 void VanguardClientUnmanaged::GAME_CLOSED()
 {
+	if (!VanguardClient::enableRTC)
+		return;
 	AllSpec::VanguardSpec->Update(VSPEC::OPENROMFILENAME, "", true, true);
 }
 
 int VanguardClientUnmanaged::GAME_NAME = 1;
+
+bool VanguardClientUnmanaged::RTC_OSD_ENABLED()
+{
+	if (!VanguardClient::enableRTC)
+		return true;
+	if (RTCV::NetCore::Params::IsParamSet(RTCSPEC::CORE_EMULATOROSDDISABLED))
+		return false;
+	return true;
+}
 
 #pragma endregion
 
@@ -876,6 +900,7 @@ bool VanguardClient::SaveState(String ^ filename, bool wait)
 	}
 	return false;
 }
+
 
 // No fun anonymous classes with closure here
 #pragma region Delegates
@@ -1020,7 +1045,7 @@ void VanguardClient::OnMessageReceived(Object ^ sender, NetCoreEventArgs ^ e)
 			uiQuit();
 			Quit();
 		}
-		Monitor::Exit;
+		Monitor::Exit(VanguardClient::GenericLockObject);
 	}
 	break;
 
