@@ -15,3 +15,4 @@ extern void TryLoadROM(char* file, int prevstatus);
 extern void Stop(bool internal);
 extern void CloseAllDialogs();
 extern uiWindow* MainWindow;
+extern void OnSetScreenRotation(uiMenuItem* item, uiWindow* window, void* param);

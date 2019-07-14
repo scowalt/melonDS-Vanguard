@@ -322,10 +322,11 @@ String^ VanguardClient::GetSyncSettings()
 void VanguardClient::SetSyncSettings(String^ ss)
 {
 	auto ssDico = JsonHelper::Deserialize<Dictionary<String^,String^>^>(ss);
-	System::String ^ out = "";
+	System::String ^ out = "v";
 	if (ssDico->TryGetValue("ScreenRotation", out))
 	{
-		ScreenRotation = Int32::Parse(out);
+		auto a = Int32::Parse(out);
+		OnSetScreenRotation(nullptr, MainWindow, (void*)&a);
 	}
 	Trace::WriteLine(out);
 }
