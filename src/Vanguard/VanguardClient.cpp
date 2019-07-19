@@ -96,6 +96,7 @@ static void EmuThreadExecute(IntPtr callbackPtr)
 	while (EmuStatus != 2);
 	static_cast<void(__stdcall*)(void)>(callbackPtr.ToPointer())();
 	EmuRunning = prevstatus;
+	ApplyNewSettings(3); //Force reinit of renderer
 }
 
 static PartialSpec ^
@@ -887,7 +888,6 @@ bool VanguardClient::LoadState(std::string filename)
 {
 	StepActions::ClearStepBlastUnits();
 	Main::LoadState(filename.c_str());
-	ApplyNewSettings(3); //Force reinit of renderer
 	return true;
 }
 
@@ -954,7 +954,8 @@ void VanguardClient::OnMessageReceived(Object ^ sender, NetCoreEventArgs ^ e)
 		{
 			VanguardClient::SetSyncSettings(settingStr);
 		}
-		e->setReturnValue(LoadState(converted_path));
+		bool success = LoadState(converted_path);
+		e->setReturnValue(success);
 	}
 	break;
 
