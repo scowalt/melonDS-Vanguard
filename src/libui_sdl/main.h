@@ -16,3 +16,4 @@ extern void Stop(bool internal);
 extern void CloseAllDialogs();
 extern uiWindow* MainWindow;
 extern void OnSetScreenRotation(uiMenuItem* item, uiWindow* window, void* param);
+extern void ApplyNewSettings(int type);
