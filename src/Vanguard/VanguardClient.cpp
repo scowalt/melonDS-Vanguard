@@ -887,7 +887,6 @@ bool VanguardClient::LoadState(std::string filename)
 {
 	StepActions::ClearStepBlastUnits();
 	Main::LoadState(filename.c_str());
-	ApplyNewSettings(3); //Force reinit of renderer
 	return true;
 }
 
