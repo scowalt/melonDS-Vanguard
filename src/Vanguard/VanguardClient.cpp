@@ -10,6 +10,8 @@
 #include "Helpers.hpp"
 #include "../libui_sdl/libui/ui.h"
 #include "../libui_sdl/main.h"
+#include "../Config.h"
+#include "../libui_sdl/PlatformConfig.h"
 #include "../NDS.h"
 #include "../NDSCart.h"
 
@@ -74,7 +76,9 @@ public:
 	static String ^ logPath = IO::Path::Combine(emuDir, "EMU_LOG.txt");
 
 	static System::Timers::Timer^ SettingsTimer;
+	static System::Timers::Timer^ ReinitRendererTimer;
 	static void SettingsSaveCallback(Object^ sender, System::Timers::ElapsedEventArgs^ e);
+	static void ReinitRendererCallback(Object^ sender, System::Timers::ElapsedEventArgs^ e);
 
 	static array<String ^> ^ configPaths;
 
@@ -209,6 +213,10 @@ void VanguardClient::SettingsSaveCallback(Object^ sender, System::Timers::Elapse
 {
 	VanguardClient::SaveWindowPosition();
 }
+void VanguardClient::ReinitRendererCallback(Object^ sender, System::Timers::ElapsedEventArgs^ e)
+{
+	ApplyNewSettings(3); //Force reinit of renderer
+}
 // Create our VanguardClient
 void VanguardClientInitializer::StartVanguardClient()
 {
@@ -220,6 +228,9 @@ void VanguardClientInitializer::StartVanguardClient()
 	//Some callbacks (such as window position changed) just don't work. Because of this, use a timer to save those settings every 5 minutes.
 	VanguardClient::SettingsTimer = gcnew System::Timers::Timer(300000);
 	VanguardClient::SettingsTimer->Elapsed += gcnew System::Timers::ElapsedEventHandler(&VanguardClient::SettingsSaveCallback);
+	VanguardClient::ReinitRendererTimer = gcnew System::Timers::Timer(150);
+	VanguardClient::ReinitRendererTimer->Elapsed += gcnew System::Timers::ElapsedEventHandler(&VanguardClient::ReinitRendererCallback);
+	VanguardClient::ReinitRendererTimer->AutoReset = false;
 
 	// Start everything
 	VanguardClient::configPaths = gcnew array<String ^>{
@@ -826,6 +837,7 @@ enum COMMANDS
 	REMOTE_ISNORMALADVANCE,
 	REMOTE_EVENT_CLOSEEMULATOR,
 	REMOTE_ALLSPECSSENT,
+	REMOTE_POSTCORRUPTACTION,
 	UNKNOWN
 };
 
@@ -857,6 +869,8 @@ inline COMMANDS CheckCommand(String ^ inString)
 		return REMOTE_EVENT_CLOSEEMULATOR;
 	if (inString == "REMOTE_ALLSPECSSENT")
 		return REMOTE_ALLSPECSSENT;
+	if (inString == "REMOTE_POSTCORRUPTACTION")
+		return REMOTE_POSTCORRUPTACTION;
 	return UNKNOWN;
 }
 
@@ -953,7 +967,8 @@ void VanguardClient::OnMessageReceived(Object ^ sender, NetCoreEventArgs ^ e)
 		{
 			VanguardClient::SetSyncSettings(settingStr);
 		}
-		e->setReturnValue(LoadState(converted_path));
+		bool success = LoadState(converted_path);
+		e->setReturnValue(success);
 	}
 	break;
 
@@ -1033,6 +1048,12 @@ void VanguardClient::OnMessageReceived(Object ^ sender, NetCoreEventArgs ^ e)
 	{
 		// Todo - Dig out fast forward?
 		e->setReturnValue(true);
+	}
+	break;
+	case REMOTE_POSTCORRUPTACTION:
+	{
+		if(Config::ScreenUseGL || (Config::_3DRenderer != 0))
+			VanguardClient::ReinitRendererTimer->Enabled = true;
 	}
 	break;
 
