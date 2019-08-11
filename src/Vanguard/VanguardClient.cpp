@@ -126,6 +126,7 @@ getDefaultPartial() {
 		"ARM7WRAM"
 	});
 	partial->Set(VSPEC::SYSTEM, String::Empty);
+	partial->Set(VSPEC::EMUDIR, VanguardClient::emuDir);
 
 	return partial;
 }
@@ -931,7 +932,6 @@ void Quit()
 
 void AllSpecsSent()
 {
-	AllSpec::VanguardSpec->Update(VSPEC::EMUDIR, VanguardClient::emuDir, true, true);
 	VanguardClient::LoadWindowPosition();
 }
 #pragma endregion
