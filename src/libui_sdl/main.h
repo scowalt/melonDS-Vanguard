@@ -4,7 +4,7 @@ class Main
 {
 	public:
 		static void SaveState(const char* filename);
-		static void LoadState(const char* filename);
+		static void LoadState(const char* filename, bool resumeAfter = true);
 	
 };
 

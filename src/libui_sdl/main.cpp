@@ -1683,7 +1683,7 @@ void GetSavestateName(int slot, char* filename, int len)
 }
 
 
-void Main::LoadState(const char* filename)
+void Main::LoadState(const char* filename, bool resumeAfter)
 {
 	int prevstatus = EmuRunning;
 	EmuRunning = 2;
@@ -1742,7 +1742,8 @@ void Main::LoadState(const char* filename)
 		uiMenuItemEnable(MenuItem_UndoStateLoad);
 	}
 
-	EmuRunning = prevstatus;
+	if(resumeAfter)
+		EmuRunning = prevstatus;
 }
 
 void LoadState(int slot)

@@ -94,7 +94,7 @@ static void EmuThreadExecute(Action ^ callback)
 
 }
 static void EmuThreadExecute(IntPtr callbackPtr)
-{
+{ 
 	int prevstatus = EmuRunning;
 	EmuRunning = 2;
 	while (EmuStatus != 2);
@@ -126,6 +126,7 @@ getDefaultPartial() {
 		"ARM7WRAM"
 	});
 	partial->Set(VSPEC::SYSTEM, String::Empty);
+	partial->Set(VSPEC::LOADSTATE_USES_CALLBACKS, true);
 
 	return partial;
 }
@@ -838,6 +839,7 @@ enum COMMANDS
 	REMOTE_EVENT_CLOSEEMULATOR,
 	REMOTE_ALLSPECSSENT,
 	REMOTE_POSTCORRUPTACTION,
+	REMOTE_RESUMEEMULATION,
 	UNKNOWN
 };
 
@@ -871,6 +873,8 @@ inline COMMANDS CheckCommand(String ^ inString)
 		return REMOTE_ALLSPECSSENT;
 	if (inString == "REMOTE_POSTCORRUPTACTION")
 		return REMOTE_POSTCORRUPTACTION;
+	if (inString == "REMOTE_RESUMEEMULATION")
+		return REMOTE_RESUMEEMULATION;
 	return UNKNOWN;
 }
 
@@ -900,7 +904,7 @@ void VanguardClient::LoadRom(String ^ filename)
 bool VanguardClient::LoadState(std::string filename)
 {
 	StepActions::ClearStepBlastUnits();
-	Main::LoadState(filename.c_str());
+	Main::LoadState(filename.c_str(), false);
 	return true;
 }
 
@@ -1052,8 +1056,14 @@ void VanguardClient::OnMessageReceived(Object ^ sender, NetCoreEventArgs ^ e)
 	break;
 	case REMOTE_POSTCORRUPTACTION:
 	{
-		if(Config::ScreenUseGL || (Config::_3DRenderer != 0))
+		if (Config::ScreenUseGL || (Config::_3DRenderer != 0))
 			VanguardClient::ReinitRendererTimer->Enabled = true;
+	}
+	break;
+
+	case REMOTE_RESUMEEMULATION:
+	{
+		EmuRunning = 1;
 	}
 	break;
 
