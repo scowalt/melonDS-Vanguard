@@ -35,6 +35,8 @@ void SetBias(u16 bias);
 
 void Mix(u32 samples);
 
+int GetOutputSize();
+void Sync(bool wait);
 int ReadOutput(s16* data, int samples);
 
 u8 Read8(u32 addr);
