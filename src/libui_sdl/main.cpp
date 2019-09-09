@@ -99,6 +99,7 @@ uiMenuItem* MenuItem_ScreenSizing[4];
 
 uiMenuItem* MenuItem_ScreenFilter;
 uiMenuItem* MenuItem_LimitFPS;
+uiMenuItem* MenuItem_AudioSync;
 uiMenuItem* MenuItem_ShowOSD;
 
 SDL_Thread* EmuThread;
@@ -133,6 +134,8 @@ bool GL_ScreenSizeDirty;
 
 int GL_3DScale;
 
+bool GL_VSyncStatus;
+
 int ScreenGap = 0;
 int ScreenLayout = 0;
 int ScreenSizing = 0;
@@ -165,6 +168,9 @@ SDL_Joystick* Joystick;
 int AudioFreq;
 float AudioSampleFrac;
 SDL_AudioDeviceID AudioDevice, MicDevice;
+
+SDL_cond* AudioSync;
+SDL_mutex* AudioSyncLock;
 
 u32 MicBufferLength = 2048;
 s16 MicBuffer[2048];
@@ -242,6 +248,8 @@ bool GLScreen_InitOSDShader(GLuint* shader)
 
 bool GLScreen_Init()
 {
+    GL_VSyncStatus = Config::ScreenVSync;
+
     // TODO: consider using epoxy?
     if (!OpenGL_Init())
         return false;
@@ -304,6 +312,13 @@ void GLScreen_DeInit()
 
 void GLScreen_DrawScreen()
 {
+    bool vsync = Config::ScreenVSync && !HotkeyDown(HK_FastForward);
+    if (vsync != GL_VSyncStatus)
+    {
+        GL_VSyncStatus = vsync;
+        uiGLSetVSync(vsync);
+    }
+
     float scale = uiGLGetFramebufferScale(GLContext);
 
     glBindFramebuffer(GL_FRAMEBUFFER, uiGLGetFramebuffer(GLContext));
@@ -578,8 +593,13 @@ void AudioCallback(void* data, Uint8* stream, int len)
     s16 buf_in[1024*2];
     s16* buf_out = (s16*)stream;
 
-    int num_in = SPU::ReadOutput(buf_in, len_in);
+    int num_in;
     int num_out = len;
+
+    SDL_LockMutex(AudioSyncLock);
+    num_in = SPU::ReadOutput(buf_in, len_in);
+    SDL_CondSignal(AudioSync);
+    SDL_UnlockMutex(AudioSyncLock);
 
     if (num_in < 1)
     {
@@ -923,6 +943,7 @@ int EmuThreadFunc(void* burp)
             Config::LimitFPS = !Config::LimitFPS;
             uiQueueMain(UpdateFPSLimit, NULL);
         }
+        // TODO: similar hotkeys for video/audio sync?
 
         if (HotkeyPressed(HK_Pause)) uiQueueMain(TogglePause, NULL);
         if (HotkeyPressed(HK_Reset)) uiQueueMain(Reset, NULL);
@@ -991,9 +1012,23 @@ int EmuThreadFunc(void* burp)
             }
             uiAreaQueueRedrawAll(MainDrawArea);
 
-            bool limitfps = Config::LimitFPS && !HotkeyDown(HK_FastForward);
-            bool vsync = Config::ScreenVSync && Screen_UseGL;
-            SPU::Sync(limitfps || vsync);
+            bool fastforward = HotkeyDown(HK_FastForward);
+
+            if (Config::AudioSync && !fastforward)
+            {
+                SDL_LockMutex(AudioSyncLock);
+                while (SPU::GetOutputSize() > 1024)
+                {
+                    int ret = SDL_CondWaitTimeout(AudioSync, AudioSyncLock, 500);
+                    if (ret == SDL_MUTEX_TIMEDOUT) break;
+                }
+                SDL_UnlockMutex(AudioSyncLock);
+            }
+            else
+            {
+                // ensure the audio FIFO doesn't overflow
+                //SPU::TrimOutput();
+            }
 
             float framerate = (1000.0f * nlines) / (60.0f * 263.0f);
 
@@ -1001,6 +1036,7 @@ int EmuThreadFunc(void* burp)
                 u32 curtick = SDL_GetTicks();
                 u32 delay = curtick - lasttick;
 
+                bool limitfps = Config::LimitFPS && !fastforward;
                 if (limitfps)
                 {
                     float wantedtickF = starttick + (framerate * (fpslimitcount+1));
@@ -2311,6 +2347,13 @@ void OnSetLimitFPS(uiMenuItem* item, uiWindow* window, void* blarg)
     else          Config::LimitFPS = false;
 }
 
+void OnSetAudioSync(uiMenuItem* item, uiWindow* window, void* blarg)
+{
+    int chk = uiMenuItemChecked(item);
+    if (chk != 0) Config::AudioSync = true;
+    else          Config::AudioSync = false;
+}
+
 void OnSetShowOSD(uiMenuItem* item, uiWindow* window, void* blarg)
 {
     int chk = uiMenuItemChecked(item);
@@ -2374,7 +2417,7 @@ void ApplyNewSettings(int type)
         GPU3D::InitRenderer(Screen_UseGL);
         if (Screen_UseGL) uiGLMakeContextCurrent(NULL);
     }
-    else if (type == 4) // vsync
+    /*else if (type == 4) // vsync
     {
         if (Screen_UseGL)
         {
@@ -2386,7 +2429,7 @@ void ApplyNewSettings(int type)
         {
             // TODO eventually: VSync for non-GL screen?
         }
-    }
+    }*/
 
     EmuRunning = prevstatus;
 }
@@ -2555,11 +2598,16 @@ void CreateMainWindowMenu()
     MenuItem_ScreenFilter = uiMenuAppendCheckItem(menu, "Screen filtering");
     uiMenuItemOnClicked(MenuItem_ScreenFilter, OnSetScreenFiltering, NULL);
 
+    MenuItem_ShowOSD = uiMenuAppendCheckItem(menu, "Show OSD");
+    uiMenuItemOnClicked(MenuItem_ShowOSD, OnSetShowOSD, NULL);
+
+    uiMenuAppendSeparator(menu);
+
     MenuItem_LimitFPS = uiMenuAppendCheckItem(menu, "Limit framerate");
     uiMenuItemOnClicked(MenuItem_LimitFPS, OnSetLimitFPS, NULL);
 
-    MenuItem_ShowOSD = uiMenuAppendCheckItem(menu, "Show OSD");
-    uiMenuItemOnClicked(MenuItem_ShowOSD, OnSetShowOSD, NULL);
+    MenuItem_AudioSync = uiMenuAppendCheckItem(menu, "Audio sync");
+    uiMenuItemOnClicked(MenuItem_AudioSync, OnSetAudioSync, NULL);
 }
 
 void CreateMainWindow(bool opengl)
@@ -2801,7 +2849,11 @@ int main(int argc, char** argv)
 
     uiMenuItemSetChecked(MenuItem_ScreenFilter, Config::ScreenFilter==1);
     uiMenuItemSetChecked(MenuItem_LimitFPS, Config::LimitFPS==1);
+    uiMenuItemSetChecked(MenuItem_AudioSync, Config::AudioSync==1);
     uiMenuItemSetChecked(MenuItem_ShowOSD, Config::ShowOSD==1);
+
+    AudioSync = SDL_CreateCond();
+    AudioSyncLock = SDL_CreateMutex();
 
     AudioFreq = 48000; // TODO: make configurable?
     SDL_AudioSpec whatIwant, whatIget;
@@ -2877,6 +2929,9 @@ int main(int argc, char** argv)
     if (Joystick) SDL_JoystickClose(Joystick);
     if (AudioDevice) SDL_CloseAudioDevice(AudioDevice);
     if (MicDevice)   SDL_CloseAudioDevice(MicDevice);
+
+    SDL_DestroyCond(AudioSync);
+    SDL_DestroyMutex(AudioSyncLock);
 
     if (MicWavBuffer) delete[] MicWavBuffer;
 
