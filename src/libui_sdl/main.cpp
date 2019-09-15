@@ -56,7 +56,6 @@
 #include "MelonCap.h"
 #endif // MELONCAP
 
->>>>>>> master
 
 // savestate slot mapping
 // 1-8: regular slots (quick access)
