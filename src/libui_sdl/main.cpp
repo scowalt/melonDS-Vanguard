@@ -52,6 +52,12 @@
 #include "Vanguard/VanguardClient.h"
 #define NOMINMAX
 
+#ifdef MELONCAP
+#include "MelonCap.h"
+#endif // MELONCAP
+
+>>>>>>> master
+
 // savestate slot mapping
 // 1-8: regular slots (quick access)
 // '9': load/save arbitrary file
@@ -1002,6 +1008,10 @@ int EmuThreadFunc(void* burp)
 
             // emulate
             u32 nlines = NDS::RunFrame();
+
+#ifdef MELONCAP
+            MelonCap::Update();
+#endif // MELONCAP
 
             if (EmuRunning == 0) break;
 
@@ -2852,6 +2862,10 @@ int main(int argc, char** argv)
     uiMenuItemSetChecked(MenuItem_AudioSync, Config::AudioSync==1);
     uiMenuItemSetChecked(MenuItem_ShowOSD, Config::ShowOSD==1);
 
+#ifdef MELONCAP
+    MelonCap::Init();
+#endif // MELONCAP
+
     AudioSync = SDL_CreateCond();
     AudioSyncLock = SDL_CreateMutex();
 
@@ -2934,6 +2948,10 @@ int main(int argc, char** argv)
     SDL_DestroyMutex(AudioSyncLock);
 
     if (MicWavBuffer) delete[] MicWavBuffer;
+
+#ifdef MELONCAP
+    MelonCap::DeInit();
+#endif // MELONCAP
 
     if (ScreenBitmap[0]) uiDrawFreeBitmap(ScreenBitmap[0]);
     if (ScreenBitmap[1]) uiDrawFreeBitmap(ScreenBitmap[1]);
