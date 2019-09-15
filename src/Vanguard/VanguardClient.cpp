@@ -315,6 +315,12 @@ void VanguardClient::LoadWindowPosition()
 	array<String^>^ loc = s->Split(',');
 	winX = Int32::Parse(loc[0]);
 	winY = Int32::Parse(loc[1]);
+
+
+	//todo make this not garbage
+	if (winX > 1850 || winY > 1000 || winX < 5 || winY < 5)
+		return;
+	
 	uiWindowSetBorderless(MainWindow, true);
 	uiWindowSetPosition(MainWindow, winX, winY);
 	uiWindowSetBorderless(MainWindow, false);
