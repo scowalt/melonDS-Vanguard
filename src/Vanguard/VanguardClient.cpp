@@ -221,6 +221,12 @@ void VanguardClient::ReinitRendererCallback(Object^ sender, System::Timers::Elap
 // Create our VanguardClient
 void VanguardClientInitializer::StartVanguardClient()
 {
+
+	// this needs to be done before the warnings/errors show up
+	System::Windows::Forms::Application::EnableVisualStyles();
+	System::Windows::Forms::Application::SetCompatibleTextRenderingDefault(false);
+
+	
 	System::Windows::Forms::Form ^ dummy = gcnew System::Windows::Forms::Form();
 	IntPtr Handle = dummy->Handle;
 	SyncObjectSingleton::SyncObject = dummy;
@@ -686,6 +692,10 @@ array<unsigned char>^ MainRAM::PeekBytes(long long address, int length)
 
 static array<MemoryDomainProxy ^> ^
 GetInterfaces() {
+
+	if (String::IsNullOrWhiteSpace(AllSpec::VanguardSpec->Get<String ^>(VSPEC::OPENROMFILENAME)))
+		return gcnew array<MemoryDomainProxy ^>(0);
+	
 	array<MemoryDomainProxy ^> ^ interfaces = gcnew array<MemoryDomainProxy ^>(5);
 	interfaces[0] = (gcnew MemoryDomainProxy(gcnew MainRAM));
 	interfaces[1] = (gcnew MemoryDomainProxy(gcnew SharedWRAM));
@@ -813,6 +823,8 @@ void VanguardClientUnmanaged::GAME_CLOSED()
 	if (!VanguardClient::enableRTC)
 		return;
 	AllSpec::VanguardSpec->Update(VSPEC::OPENROMFILENAME, "", true, true);
+	RefreshDomains();
+	RtcCore::GAME_CLOSED();
 }
 
 int VanguardClientUnmanaged::GAME_NAME = 1;
