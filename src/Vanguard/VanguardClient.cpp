@@ -824,7 +824,7 @@ void VanguardClientUnmanaged::GAME_CLOSED()
 		return;
 	AllSpec::VanguardSpec->Update(VSPEC::OPENROMFILENAME, "", true, true);
 	RefreshDomains();
-	RtcCore::GAME_CLOSED();
+	RtcCore::GAME_CLOSED(true);
 }
 
 int VanguardClientUnmanaged::GAME_NAME = 1;
