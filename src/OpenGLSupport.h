@@ -114,8 +114,6 @@
     func(GLGETUNIFORMLOCATION, glGetUniformLocation); \
     func(GLGETUNIFORMBLOCKINDEX, glGetUniformBlockIndex); \
      \
-    func(GLBINDIMAGETEXTURE, glBindImageTexture); \
-     \
     func(GLDRAWBUFFERS, glDrawBuffers); \
      \
     func(GLBLENDFUNCSEPARATE, glBlendFuncSeparate); \

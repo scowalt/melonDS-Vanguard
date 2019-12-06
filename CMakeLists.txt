@@ -30,15 +30,14 @@ else()
 endif()
 
 if(ENABLE_LTO)
-	#add_compile_options(-O3 -flto)
-	add_compile_options(/EHsc /GL )
+	add_compile_options(/EHsc /GL /O2)
 	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /LTCG")
 	set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} /LTCG")
 	set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /LTCG")
 endif()
 
 #add_compile_options(-fno-pic)
-#add_link_options(-no-pie)
+#add_link_options(/LTCG)
 
 option(BUILD_LIBUI "Build libui frontend" ON)
 
