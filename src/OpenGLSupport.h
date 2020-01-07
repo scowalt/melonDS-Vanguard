@@ -24,7 +24,9 @@
 
 #define NOMINMAX
 #include <windows.h>
-#include <GL/glew.h>
+//#include <GL/glew.h>
+#include <GL/gl.h>
+#include "thirdparty/gl/glext.h"
 
 #include "Platform.h"
 
