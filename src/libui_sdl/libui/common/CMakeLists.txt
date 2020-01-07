@@ -1,8 +1,5 @@
 # 3 june 2016
 
-include_directories("C:/Users/Daniel/Documents/deps")
-include_directories("C:/Users/Daniel/Documents/deps/SDL_dev")
-link_directories("C:/Users/Daniel/Documents/deps/SDL_dev/libs")
 list(APPEND _LIBUI_SOURCES
 	common/areaevents.c
 	common/control.c

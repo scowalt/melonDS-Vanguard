@@ -1,9 +1,6 @@
 project(libui_sdl)
 
-include_directories("C:/Users/Daniel/Documents/deps")
-include_directories("C:/Users/Daniel/Documents/deps/SDL_dev")
-link_directories("C:/Users/Daniel/Documents/deps/SDL_dev/libs")
-include_directories("C:/Users/Daniel/Documents/deps")
+link_directories("../thirdparty/sdl")
 SET(SOURCES_LIBUI
 	main.cpp
 	Platform.cpp

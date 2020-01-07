@@ -1,8 +1,6 @@
 
 project(core)
 
-include_directories("C:/Users/Daniel/Documents/deps")
-link_directories("C:/Users/Daniel/Documents/deps/SDL_dev/libs")
 add_library(core STATIC
 	ARM.cpp
 	ARMInterpreter.cpp

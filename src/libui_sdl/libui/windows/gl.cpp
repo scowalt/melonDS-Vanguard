@@ -3,8 +3,9 @@
 #include "area.hpp"
 
 #include <GL/gl.h>
-#include <GL/glext.h>
-#include <GL/wglext.h>
+#include <../../thirdparty/gl/glext.h>
+#include <../../thirdparty/gl/wglext.h>
+
 
 struct uiGLContext
 {

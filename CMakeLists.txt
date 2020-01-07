@@ -13,9 +13,6 @@ set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} /MANIFEST:NO")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /MANIFEST:NO")
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /CLRTHREADATTRIBUTE:STA")
 
-include_directories("C:/Users/Daniel/Documents/deps")
-include_directories("C:/Users/Daniel/Documents/deps/SDL_dev")
-link_directories("C:/Users/Daniel/Documents/deps/SDL_dev/libs")
 
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
