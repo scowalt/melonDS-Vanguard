@@ -2841,7 +2841,6 @@ int main(int argc, char** argv)
 				         "You should use the latest version of romlist.bin (provided in melonDS release packages).");
         }
     }
-	VanguardClientInitializer::Initialize();
     CreateMainWindowMenu();
 
     MainDrawAreaHandler.Draw = OnAreaDraw;
@@ -2861,6 +2860,7 @@ int main(int argc, char** argv)
     else if (GL_3DScale > 8) GL_3DScale = 8;
 
     CreateMainWindow(Screen_UseGL);
+    VanguardClientInitializer::Initialize();
 
     ScreenRotation = Config::ScreenRotation;
     ScreenGap = Config::ScreenGap;
