@@ -1,6 +1,6 @@
 #pragma once
 //RTC_Hijack - Move a bunch of stuff to a header so we can access it
-class Main
+class VanguardExports
 {
 	public:
 		static void SaveState(const char* filename);
@@ -11,7 +11,7 @@ class Main
 extern int EmuRunning;
 extern int ScreenRotation;
 extern volatile int EmuStatus;
-extern void TryLoadROM(char* file, int prevstatus);
+extern void TryLoadROM(char* file, int slot, int prevstatus);
 extern void Stop(bool internal);
 extern void CloseAllDialogs();
 extern uiWindow* MainWindow;

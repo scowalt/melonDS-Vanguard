@@ -1,5 +1,5 @@
 /*
-    Copyright 2016-2019 Arisotura
+    Copyright 2016-2020 Arisotura
 
     This file is part of melonDS.
 
@@ -21,6 +21,10 @@
 #include <stdio.h>
 #include <string.h>
 
+#ifndef __WIN32__
+#include <glib.h>
+#endif
+
 #include "SDL2/SDL.h"
 #include "libui/ui.h"
 
@@ -38,6 +42,7 @@
 #include "DlgWifiSettings.h"
 
 #include "../NDS.h"
+#include "../GBACart.h"
 #include "../GPU.h"
 #include "../SPU.h"
 #include "../Wifi.h"
@@ -46,11 +51,12 @@
 
 #include "../Savestate.h"
 #include "../Vanguard/VanguardClientInitializer.h"
-#include "main.h"
+#include "../Vanguard/VanguardClient.h"
 
 #include "OSD.h"
-#include "Vanguard/VanguardClient.h"
-#define NOMINMAX
+
+#include "main.h"
+
 
 #ifdef MELONCAP
 #include "MelonCap.h"
@@ -70,9 +76,6 @@ const int kScreenSizing[4] = {0, 1, 2, 3};
 
 
 char* EmuDirectory;
-int EmuRunning = 0;
-volatile int EmuStatus = 0;
-
 
 
 uiWindow* MainWindow;
@@ -108,11 +111,13 @@ uiMenuItem* MenuItem_AudioSync;
 uiMenuItem* MenuItem_ShowOSD;
 
 SDL_Thread* EmuThread;
+int EmuRunning;
+volatile int EmuStatus;
 
 bool RunningSomething;
-char ROMPath[1024];
-char SRAMPath[1024];
-char PrevSRAMPath[1024]; // for savestate 'undo load'
+char ROMPath[2][1024];
+char SRAMPath[2][1024];
+char PrevSRAMPath[2][1024]; // for savestate 'undo load'
 
 bool SavestateLoaded;
 
@@ -189,7 +194,7 @@ void SetupScreenRects(int width, int height);
 void TogglePause(void* blarg);
 void Reset(void* blarg);
 
-void SetupSRAMPath();
+void SetupSRAMPath(int slot);
 
 void SaveState(int slot);
 void LoadState(int slot);
@@ -891,7 +896,10 @@ bool JoyButtonHeld(int btnid, int njoybuttons, Uint8* joybuttons, Uint32 hat)
 void UpdateWindowTitle(void* data)
 {
     if (EmuStatus == 0) return;
-    uiWindowSetTitle(MainWindow, (const char*)data);
+    void** dataarray = (void**)data;
+    SDL_LockMutex((SDL_mutex*)dataarray[1]);
+    uiWindowSetTitle(MainWindow, (const char*)dataarray[0]);
+    SDL_UnlockMutex((SDL_mutex*)dataarray[1]);
 }
 
 void UpdateFPSLimit(void* data)
@@ -937,7 +945,10 @@ int EmuThreadFunc(void* burp)
     u64 perffreq = SDL_GetPerformanceFrequency();
     float samplesleft = 0;
     u32 nsamples = 0;
+
     char melontitle[100];
+    SDL_mutex* titlemutex = SDL_CreateMutex();
+    void* titledata[2] = {melontitle, titlemutex};
 
     while (EmuRunning != 0)
     {
@@ -952,6 +963,24 @@ int EmuThreadFunc(void* burp)
 
         if (HotkeyPressed(HK_Pause)) uiQueueMain(TogglePause, NULL);
         if (HotkeyPressed(HK_Reset)) uiQueueMain(Reset, NULL);
+
+        if (GBACart::CartInserted && GBACart::HasSolarSensor)
+        {
+            if (HotkeyPressed(HK_SolarSensorDecrease))
+            {
+                if (GBACart_SolarSensor::LightLevel > 0) GBACart_SolarSensor::LightLevel--;
+                char msg[64];
+                sprintf(msg, "Solar sensor level set to %d", GBACart_SolarSensor::LightLevel);
+                OSD::AddMessage(0, msg);
+            }
+            if (HotkeyPressed(HK_SolarSensorIncrease))
+            {
+                if (GBACart_SolarSensor::LightLevel < 10) GBACart_SolarSensor::LightLevel++;
+                char msg[64];
+                sprintf(msg, "Solar sensor level set to %d", GBACart_SolarSensor::LightLevel);
+                OSD::AddMessage(0, msg);
+            }
+        }
 
         if (EmuRunning == 1)
         {
@@ -1061,6 +1090,11 @@ int EmuThreadFunc(void* burp)
                         starttick = lasttick;
                     }
                 }
+                else
+                {
+                    if (delay < 1) SDL_Delay(1);
+                    lasttick = SDL_GetTicks();
+                }
             }
 
             nframes++;
@@ -1079,8 +1113,10 @@ int EmuThreadFunc(void* burp)
                 if (framerate < 1) fpstarget = 999;
                 else fpstarget = 1000.0f/framerate;
 
+                SDL_LockMutex(titlemutex);
                 sprintf(melontitle, "[%d/%.0f] melonDS " MELONDS_VERSION, fps, fpstarget);
-                uiQueueMain(UpdateWindowTitle, melontitle);
+                SDL_UnlockMutex(titlemutex);
+                uiQueueMain(UpdateWindowTitle, titledata);
             }
         }
         else
@@ -1113,6 +1149,8 @@ int EmuThreadFunc(void* burp)
     }
 
     EmuStatus = 0;
+
+    SDL_DestroyMutex(titlemutex);
 
     if (Screen_UseGL) uiGLMakeContextCurrent(GLContext);
 
@@ -1653,12 +1691,18 @@ void Reset(void* blarg)
     SavestateLoaded = false;
     uiMenuItemDisable(MenuItem_UndoStateLoad);
 
-    if (ROMPath[0] == '\0')
+    if (ROMPath[0][0] == '\0')
         NDS::LoadBIOS();
     else
     {
-        SetupSRAMPath();
-        NDS::LoadROM(ROMPath, SRAMPath, Config::DirectBoot);
+        SetupSRAMPath(0);
+        NDS::LoadROM(ROMPath[0], SRAMPath[0], Config::DirectBoot);
+    }
+
+    if (ROMPath[1][0] != '\0')
+    {
+        SetupSRAMPath(1);
+        NDS::LoadGBAROM(ROMPath[1], SRAMPath[1]);
     }
 
     Run();
@@ -1672,7 +1716,13 @@ void Stop(bool internal)
     if (!internal) // if shutting down from the UI thread, wait till the emu thread has stopped
         while (EmuStatus != 2);
     RunningSomething = false;
-	VanguardClientUnmanaged::GAME_CLOSED();
+
+    //VANGUARD_HOOK
+    VanguardClientUnmanaged::GAME_CLOSED();
+
+    // eject any inserted GBA cartridge
+    GBACart::Eject();
+    ROMPath[1][0] = '\0';
 
     uiWindowSetTitle(MainWindow, "melonDS " MELONDS_VERSION);
 
@@ -1694,35 +1744,48 @@ void Stop(bool internal)
     OSD::AddMessage(0xFFC040, "Shutdown");
 }
 
-void SetupSRAMPath()
+void SetupSRAMPath(int slot)
 {
-    strncpy(SRAMPath, ROMPath, 1023);
-    SRAMPath[1023] = '\0';
-    strncpy(SRAMPath + strlen(ROMPath) - 3, "sav", 3);
+    strncpy(SRAMPath[slot], ROMPath[slot], 1023);
+    SRAMPath[slot][1023] = '\0';
+    strncpy(SRAMPath[slot] + strlen(ROMPath[slot]) - 3, "sav", 3);
 }
 
-void TryLoadROM(char* file, int prevstatus)
+void TryLoadROM(char* file, int slot, int prevstatus)
 {
     char oldpath[1024];
     char oldsram[1024];
-    strncpy(oldpath, ROMPath, 1024);
-    strncpy(oldsram, SRAMPath, 1024);
+    strncpy(oldpath, ROMPath[slot], 1024);
+    strncpy(oldsram, SRAMPath[slot], 1024);
 
-    strncpy(ROMPath, file, 1023);
-    ROMPath[1023] = '\0';
+    strncpy(ROMPath[slot], file, 1023);
+    ROMPath[slot][1023] = '\0';
 
-    SetupSRAMPath();
+    SetupSRAMPath(0);
+    SetupSRAMPath(1);
 
-	std::string str(file);
-	VanguardClientUnmanaged::LOAD_GAME_START(str);
-    if (NDS::LoadROM(ROMPath, SRAMPath, Config::DirectBoot))
+    std::string str(file);
+    if (slot == 0)
+        VanguardClientUnmanaged::LOAD_GAME_START(str);
+    if (slot == 0 && NDS::LoadROM(ROMPath[slot], SRAMPath[slot], Config::DirectBoot))
     {
         SavestateLoaded = false;
         uiMenuItemDisable(MenuItem_UndoStateLoad);
 
-        strncpy(PrevSRAMPath, SRAMPath, 1024); // safety
+        // Reload the inserted GBA cartridge (if any)
+        if (ROMPath[1][0] != '\0') NDS::LoadGBAROM(ROMPath[1], SRAMPath[1]);
+
+        strncpy(PrevSRAMPath[slot], SRAMPath[slot], 1024); // safety
         Run();
-		VanguardClientUnmanaged::LOAD_GAME_DONE();
+        VanguardClientUnmanaged::LOAD_GAME_DONE();
+    }
+    else if (slot == 1 && NDS::LoadGBAROM(ROMPath[slot], SRAMPath[slot]))
+    {
+        SavestateLoaded = false;
+        uiMenuItemDisable(MenuItem_UndoStateLoad);
+
+        strncpy(PrevSRAMPath[slot], SRAMPath[slot], 1024); // safety
+        if (RunningSomething) Run(); // do not start just from a GBA cart
     }
     else
     {
@@ -1730,10 +1793,10 @@ void TryLoadROM(char* file, int prevstatus)
                       "Failed to load the ROM",
                       "Make sure the file can be accessed and isn't opened in another application.");
 
-        strncpy(ROMPath, oldpath, 1024);
-        strncpy(SRAMPath, oldsram, 1024);
+        strncpy(ROMPath[slot], oldpath, 1024);
+        strncpy(SRAMPath[slot], oldsram, 1024);
         EmuRunning = prevstatus;
-		VanguardClientUnmanaged::LOAD_GAME_DONE();
+        VanguardClientUnmanaged::LOAD_GAME_DONE();
     }
 }
 
@@ -1745,90 +1808,107 @@ void GetSavestateName(int slot, char* filename, int len)
 {
     int pos;
 
-    if (ROMPath[0] == '\0') // running firmware, no ROM
+    if (ROMPath[0][0] == '\0') // running firmware, no ROM
     {
         strcpy(filename, "firmware");
         pos = 8;
     }
     else
     {
-        int l = strlen(ROMPath);
+        int l = strlen(ROMPath[0]);
         pos = l;
-        while (ROMPath[pos] != '.' && pos > 0) pos--;
+        while (ROMPath[0][pos] != '.' && pos > 0) pos--;
         if (pos == 0) pos = l;
 
         // avoid buffer overflow. shoddy
         if (pos > len-5) pos = len-5;
 
-        strncpy(&filename[0], ROMPath, pos);
+        strncpy(&filename[0], ROMPath[0], pos);
     }
     strcpy(&filename[pos], ".ml");
     filename[pos+3] = '0'+slot;
     filename[pos+4] = '\0';
 }
 
-
-void Main::LoadState(const char* filename, bool resumeAfter)
+void VanguardExports::LoadState(const char* filename, bool resumeAfter)
 {
-	int prevstatus = EmuRunning;
-	EmuRunning = 2;
-	while (EmuStatus != 2);
-	if (!Platform::FileExists(filename))
-	{
-		char msg[64];
-		sprintf(msg, "State file does not exist");
-		OSD::AddMessage(0xFFA0A0, msg);
 
-		EmuRunning = prevstatus;
-		return;
-	}
+    int prevstatus = EmuRunning;
+    EmuRunning = 2;
+    while (EmuStatus != 2);
 
-	// backup
-	Savestate* backup = new Savestate("timewarp.mln", true);
-	NDS::DoSavestate(backup);
-	delete backup;
+    if (!Platform::FileExists(filename))
+    {
+        char msg[64];
+        sprintf(msg, "State file does not exist");
+        OSD::AddMessage(0xFFA0A0, msg);
 
-	bool failed = false;
+        EmuRunning = prevstatus;
+        return;
+    }
 
-	Savestate* state = new Savestate(filename, false);
-	if (state->Error)
-	{
-		delete state;
+    u32 oldGBACartCRC = GBACart::CartCRC;
 
-		uiMsgBoxError(MainWindow, "Error", "Could not load savestate file.");
+    // backup
+    Savestate* backup = new Savestate("timewarp.mln", true);
+    NDS::DoSavestate(backup);
+    delete backup;
 
-		// current state might be crapoed, so restore from sane backup
-		state = new Savestate("timewarp.mln", false);
-		failed = true;
-	}
+    bool failed = false;
 
-	NDS::DoSavestate(state);
-	delete state;
+    Savestate* state = new Savestate(filename, false);
+    if (state->Error)
+    {
+        delete state;
 
-	if (!failed)
-	{
-		if (Config::SavestateRelocSRAM && ROMPath[0] != '\0')
-		{
-			strncpy(PrevSRAMPath, SRAMPath, 1024);
+        uiMsgBoxError(MainWindow, "Error", "Could not load savestate file.");
 
-			strncpy(SRAMPath, filename, 1019);
-			int len = strlen(SRAMPath);
-			strcpy(&SRAMPath[len], ".sav");
-			SRAMPath[len + 4] = '\0';
+        // current state might be crapoed, so restore from sane backup
+        state = new Savestate("timewarp.mln", false);
+        failed = true;
+    }
 
-			NDS::RelocateSave(SRAMPath, false);
-		}
+    NDS::DoSavestate(state);
+    delete state;
 
-		char msg[64];
-		sprintf(msg, "State loaded from file");
-		OSD::AddMessage(0, msg);
+    if (!failed)
+    {
+        if (Config::SavestateRelocSRAM && ROMPath[0][0] != '\0')
+        {
+            strncpy(PrevSRAMPath[0], SRAMPath[0], 1024);
 
-		SavestateLoaded = true;
-		uiMenuItemEnable(MenuItem_UndoStateLoad);
-	}
+            strncpy(SRAMPath[0], filename, 1019);
+            int len = strlen(SRAMPath[0]);
+            strcpy(&SRAMPath[0][len], ".sav");
+            SRAMPath[0][len + 4] = '\0';
 
-	if(resumeAfter)
-		EmuRunning = prevstatus;
+            NDS::RelocateSave(SRAMPath[0], false);
+        }
+
+        bool loadedPartialGBAROM = false;
+
+        // in case we have a GBA cart inserted, and the GBA ROM changes
+        // due to having loaded a save state, we do not want to reload
+        // the previous cartridge on reset, or commit writes to any
+        // loaded save file. therefore, their paths are "nulled".
+        if (GBACart::CartInserted && GBACart::CartCRC != oldGBACartCRC)
+        {
+            ROMPath[1][0] = '\0';
+            SRAMPath[1][0] = '\0';
+            loadedPartialGBAROM = true;
+        }
+
+        char msg[64];
+        sprintf(msg, "State loaded from file%s",
+            loadedPartialGBAROM ? " (GBA ROM header only)" : "");
+        OSD::AddMessage(0, msg);
+
+        SavestateLoaded = true;
+        uiMenuItemEnable(MenuItem_UndoStateLoad);
+    }
+
+    if(resumeAfter)
+        EmuRunning = prevstatus;
 }
 
 void LoadState(int slot)
@@ -1868,6 +1948,8 @@ void LoadState(int slot)
         return;
     }
 
+    u32 oldGBACartCRC = GBACart::CartCRC;
+
     // backup
     Savestate* backup = new Savestate("timewarp.mln", true);
     NDS::DoSavestate(backup);
@@ -1892,21 +1974,36 @@ void LoadState(int slot)
 
     if (!failed)
     {
-        if (Config::SavestateRelocSRAM && ROMPath[0]!='\0')
+        if (Config::SavestateRelocSRAM && ROMPath[0][0]!='\0')
         {
-            strncpy(PrevSRAMPath, SRAMPath, 1024);
+            strncpy(PrevSRAMPath[0], SRAMPath[0], 1024);
 
-            strncpy(SRAMPath, filename, 1019);
-            int len = strlen(SRAMPath);
-            strcpy(&SRAMPath[len], ".sav");
-            SRAMPath[len+4] = '\0';
+            strncpy(SRAMPath[0], filename, 1019);
+            int len = strlen(SRAMPath[0]);
+            strcpy(&SRAMPath[0][len], ".sav");
+            SRAMPath[0][len+4] = '\0';
 
-            NDS::RelocateSave(SRAMPath, false);
+            NDS::RelocateSave(SRAMPath[0], false);
+        }
+
+        bool loadedPartialGBAROM = false;
+
+        // in case we have a GBA cart inserted, and the GBA ROM changes
+        // due to having loaded a save state, we do not want to reload
+        // the previous cartridge on reset, or commit writes to any
+        // loaded save file. therefore, their paths are "nulled".
+        if (GBACart::CartInserted && GBACart::CartCRC != oldGBACartCRC)
+        {
+            ROMPath[1][0] = '\0';
+            SRAMPath[1][0] = '\0';
+            loadedPartialGBAROM = true;
         }
 
         char msg[64];
-        if (slot > 0) sprintf(msg, "State loaded from slot %d", slot);
-        else          sprintf(msg, "State loaded from file");
+        if (slot > 0) sprintf(msg, "State loaded from slot %d%s",
+                        slot, loadedPartialGBAROM ? " (GBA ROM header only)" : "");
+        else          sprintf(msg, "State loaded from file%s",
+                        loadedPartialGBAROM ? " (GBA ROM header only)" : "");
         OSD::AddMessage(0, msg);
 
         SavestateLoaded = true;
@@ -1916,39 +2013,41 @@ void LoadState(int slot)
     EmuRunning = prevstatus;
 }
 
-void Main::SaveState(const char* filename)
+void VanguardExports::SaveState(const char* filename)
 {
-	int prevstatus = EmuRunning;
-	EmuRunning = 2;
-	while (EmuStatus != 2);
-	Savestate* state = new Savestate(filename, true);
-	if (state->Error)
-	{
-		delete state;
-		uiMsgBoxError(MainWindow, "Error", "Could not save state.");
-	}
-	else
-	{
-		NDS::DoSavestate(state);
-		delete state;
+    int prevstatus = EmuRunning;
+    EmuRunning = 2;
+    while (EmuStatus != 2);
+
+    Savestate* state = new Savestate(filename, true);
+    if (state->Error)
+    {
+        delete state;
+
+        uiMsgBoxError(MainWindow, "Error", "Could not save state.");
+    }
+    else
+    {
+        NDS::DoSavestate(state);
+        delete state;
 
 
-		if (Config::SavestateRelocSRAM && ROMPath[0] != '\0')
-		{
-			strncpy(SRAMPath, filename, 1019);
-			int len = strlen(SRAMPath);
-			strcpy(&SRAMPath[len], ".sav");
-			SRAMPath[len + 4] = '\0';
+        if (Config::SavestateRelocSRAM && ROMPath[0][0] != '\0')
+        {
+            strncpy(SRAMPath[0], filename, 1019);
+            int len = strlen(SRAMPath[0]);
+            strcpy(&SRAMPath[0][len], ".sav");
+            SRAMPath[0][len + 4] = '\0';
 
-			NDS::RelocateSave(SRAMPath, true);
-		}
-	}
+            NDS::RelocateSave(SRAMPath[0], true);
+        }
+    }
 
-	char msg[64];
-	sprintf(msg, "State saved to file");
-	OSD::AddMessage(0, msg);
+    char msg[64];
+    sprintf(msg, "State saved to file");
+    OSD::AddMessage(0, msg);
 
-	EmuRunning = prevstatus;
+    EmuRunning = prevstatus;
 }
 void SaveState(int slot)
 {
@@ -1991,14 +2090,14 @@ void SaveState(int slot)
         if (slot > 0)
             uiMenuItemEnable(MenuItem_LoadStateSlot[slot-1]);
 
-        if (Config::SavestateRelocSRAM && ROMPath[0]!='\0')
+        if (Config::SavestateRelocSRAM && ROMPath[0][0]!='\0')
         {
-            strncpy(SRAMPath, filename, 1019);
-            int len = strlen(SRAMPath);
-            strcpy(&SRAMPath[len], ".sav");
-            SRAMPath[len+4] = '\0';
+            strncpy(SRAMPath[0], filename, 1019);
+            int len = strlen(SRAMPath[0]);
+            strcpy(&SRAMPath[0][len], ".sav");
+            SRAMPath[0][len+4] = '\0';
 
-            NDS::RelocateSave(SRAMPath, true);
+            NDS::RelocateSave(SRAMPath[0], true);
         }
     }
 
@@ -2025,10 +2124,10 @@ void UndoStateLoad()
     NDS::DoSavestate(backup);
     delete backup;
 
-    if (ROMPath[0]!='\0')
+    if (ROMPath[0][0]!='\0')
     {
-        strncpy(SRAMPath, PrevSRAMPath, 1024);
-        NDS::RelocateSave(SRAMPath, false);
+        strncpy(SRAMPath[0], PrevSRAMPath[0], 1024);
+        NDS::RelocateSave(SRAMPath[0], false);
     }
 
     OSD::AddMessage(0, "State load undone");
@@ -2059,12 +2158,6 @@ int OnCloseWindow(uiWindow* window, void* blarg)
     return 1;
 }
 
-#ifdef __WIN32__
-//not #if defined(_WIN32) || defined(_WIN64) because we have strncasecmp in mingw
-#define strncasecmp _strnicmp
-#define strcasecmp _stricmp
-#endif
-
 void OnDropFile(uiWindow* window, char* file, void* blarg)
 {
     char* ext = &file[strlen(file)-3];
@@ -2078,7 +2171,11 @@ void OnDropFile(uiWindow* window, char* file, void* blarg)
             while (EmuStatus != 2);
         }
 
-        TryLoadROM(file, prevstatus);
+        TryLoadROM(file, 0, prevstatus);
+    }
+    else if (!strcasecmp(ext, "gba"))
+    {
+        TryLoadROM(file, 1, prevstatus);
     }
 }
 
@@ -2109,7 +2206,7 @@ void OnOpenFile(uiMenuItem* item, uiWindow* window, void* blarg)
     EmuRunning = 2;
     while (EmuStatus != 2);
 
-    char* file = uiOpenFile(window, "DS ROM (*.nds)|*.nds;*.srl|Any file|*.*", Config::LastROMFolder);
+    char* file = uiOpenFile(window, "DS ROM (*.nds)|*.nds;*.srl|GBA ROM (*.gba)|*.gba|Any file|*.*", Config::LastROMFolder);
     if (!file)
     {
         EmuRunning = prevstatus;
@@ -2120,8 +2217,17 @@ void OnOpenFile(uiMenuItem* item, uiWindow* window, void* blarg)
     while (file[pos] != '/' && file[pos] != '\\' && pos > 0) pos--;
     strncpy(Config::LastROMFolder, file, pos);
     Config::LastROMFolder[pos] = '\0';
+    char* ext = &file[strlen(file)-3];
 
-    TryLoadROM(file, prevstatus);
+    if (!strcasecmp(ext, "gba"))
+    {
+        TryLoadROM(file, 1, prevstatus);
+    }
+    else
+    {
+        TryLoadROM(file, 0, prevstatus);
+    }
+
     uiFreeText(file);
 }
 
@@ -2146,8 +2252,14 @@ void OnRun(uiMenuItem* item, uiWindow* window, void* blarg)
 {
     if (!RunningSomething)
     {
-        ROMPath[0] = '\0';
+        ROMPath[0][0] = '\0';
         NDS::LoadBIOS();
+
+        if (ROMPath[1][0] != '\0')
+        {
+            SetupSRAMPath(1);
+            NDS::LoadGBAROM(ROMPath[1], SRAMPath[1]);
+        }
     }
 
     Run();
@@ -2703,6 +2815,7 @@ int main(int argc, char** argv)
     printf("melonDS " MELONDS_VERSION "\n");
     printf(MELONDS_URL "\n");
 
+#if defined(__WIN32__) || defined(UNIX_PORTABLE)
     if (argc > 0 && strlen(argv[0]) > 0)
     {
         int len = strlen(argv[0]);
@@ -2729,6 +2842,13 @@ int main(int argc, char** argv)
         EmuDirectory = new char[2];
         strcpy(EmuDirectory, ".");
     }
+#else
+	const char* confdir = g_get_user_config_dir();
+	const char* confname = "/melonDS";
+	EmuDirectory = new char[strlen(confdir) + strlen(confname) + 1];
+	strcat(EmuDirectory, confdir);
+	strcat(EmuDirectory, confname);
+#endif
 
     // http://stackoverflow.com/questions/14543333/joystick-wont-work-using-sdl
     SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");
@@ -2764,15 +2884,23 @@ int main(int argc, char** argv)
         !Platform::LocalFileExists("bios9.bin") ||
         !Platform::LocalFileExists("firmware.bin"))
     {
-        uiMsgBoxError(
-            NULL,
-            "BIOS/Firmware not found",
+#if defined(__WIN32__) || defined(UNIX_PORTABLE)
+		const char* locationName = "the directory you run melonDS from";
+#else
+		char* locationName = EmuDirectory;
+#endif
+		char msgboxtext[512];
+		sprintf(msgboxtext,
             "One or more of the following required files don't exist or couldn't be accessed:\n\n"
             "bios7.bin -- ARM7 BIOS\n"
             "bios9.bin -- ARM9 BIOS\n"
             "firmware.bin -- firmware image\n\n"
-            "Dump the files from your DS and place them in the directory you run melonDS from.\n"
-            "Make sure that the files can be accessed.");
+            "Dump the files from your DS and place them in %s.\n"
+            "Make sure that the files can be accessed.",
+			locationName
+		);
+
+        uiMsgBoxError(NULL, "BIOS/Firmware not found", msgboxtext);
 
         uiUninit();
         SDL_Quit();
@@ -2818,7 +2946,18 @@ int main(int argc, char** argv)
         }
     }
     {
-        FILE* f = Platform::OpenLocalFile("romlist.bin", "rb");
+        const char* romlist_missing = "Save memory type detection will not work correctly.\n\n"
+            "You should use the latest version of romlist.bin (provided in melonDS release packages).";
+#if !defined(UNIX_PORTABLE) && !defined(__WIN32__)
+        std::string missingstr = std::string(romlist_missing) +
+            "\n\nThe ROM list should be placed in " + g_get_user_data_dir() + "/melonds/, otherwise "
+            "melonDS will search for it in the current working directory.";
+        const char* romlist_missing_text = missingstr.c_str();
+#else
+        const char* romlist_missing_text = romlist_missing;
+#endif
+
+        FILE* f = Platform::OpenDataFile("romlist.bin");
         if (f)
         {
             u32 data;
@@ -2827,20 +2966,15 @@ int main(int argc, char** argv)
 
             if ((data >> 24) == 0) // old CRC-based list
             {
-                uiMsgBoxError(NULL,
-                              "Your version of romlist.bin is outdated.",
-                              "Save memory type detection will not work correctly.\n\n"
-                              "You should use the latest version of romlist.bin (provided in melonDS release packages).");
+                uiMsgBoxError(NULL, "Your version of romlist.bin is outdated.", romlist_missing_text);
             }
         }
         else
         {
-        	uiMsgBoxError(NULL,
-        			     "romlist.bin not found.",
-        			     "Save memory type detection will not work correctly.\n\n"
-				         "You should use the latest version of romlist.bin (provided in melonDS release packages).");
+        	uiMsgBoxError(NULL, "romlist.bin not found.", romlist_missing_text);
         }
     }
+
     CreateMainWindowMenu();
 
     MainDrawAreaHandler.Draw = OnAreaDraw;
@@ -2966,13 +3100,29 @@ int main(int argc, char** argv)
 
         if (!strcasecmp(ext, "nds") || !strcasecmp(ext, "srl"))
         {
-            strncpy(ROMPath, file, 1023);
-            ROMPath[1023] = '\0';
+            strncpy(ROMPath[0], file, 1023);
+            ROMPath[0][1023] = '\0';
 
-            SetupSRAMPath();
+            SetupSRAMPath(0);
 
-            if (NDS::LoadROM(ROMPath, SRAMPath, Config::DirectBoot))
+            if (NDS::LoadROM(ROMPath[0], SRAMPath[0], Config::DirectBoot))
                 Run();
+        }
+
+        if (argc > 2)
+        {
+            file = argv[2];
+            ext = &file[strlen(file)-3];
+
+            if (!strcasecmp(ext, "gba"))
+            {
+                strncpy(ROMPath[1], file, 1023);
+                ROMPath[1][1023] = '\0';
+
+                SetupSRAMPath(1);
+
+                NDS::LoadGBAROM(ROMPath[1], SRAMPath[1]);
+            }
         }
     }
 
@@ -3015,7 +3165,7 @@ int CALLBACK WinMain(HINSTANCE hinst, HINSTANCE hprev, LPSTR cmdline, int cmdsho
 {
     int argc = 0;
     wchar_t** argv_w = CommandLineToArgvW(GetCommandLineW(), &argc);
-    char* nullarg = (char*)"";
+    char* nullarg = "";
 
     char** argv = new char*[argc];
     for (int i = 0; i < argc; i++)

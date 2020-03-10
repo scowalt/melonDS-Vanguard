@@ -901,7 +901,7 @@ void VanguardClient::LoadRom(String ^ filename)
 	int prevstatus = EmuRunning;
 	EmuRunning = 2;
 	while (EmuStatus != 2);
-	TryLoadROM((char*)path.c_str(), prevstatus);
+	TryLoadROM((char*)path.c_str(), 0, prevstatus);
 
 	// We have to do it this way to prevent deadlock due to synced calls. It sucks but it's required
 	// at the moment
@@ -918,7 +918,7 @@ void VanguardClient::LoadRom(String ^ filename)
 bool VanguardClient::LoadState(std::string filename)
 {
 	StepActions::ClearStepBlastUnits();
-	Main::LoadState(filename.c_str(), false);
+	VanguardExports::LoadState(filename.c_str(), false);
 	return true;
 }
 
@@ -928,7 +928,7 @@ bool VanguardClient::SaveState(String ^ filename, bool wait)
 	{
 		std::string s = Helpers::systemStringToUtf8String(filename);
 		const char* converted_filename = s.c_str();
-		Main::SaveState(converted_filename);
+		VanguardExports::SaveState(converted_filename);
 		return true;
 	}
 	return false;
