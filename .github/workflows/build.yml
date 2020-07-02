@@ -23,9 +23,9 @@ jobs:
     - name: Configure
       run: |
         C:\msys64\usr\bin\bash.exe -lc "export PATH=`"/mingw64/bin:`$PATH`" \
-        && cd melonDS-Vanguard/build && cmake .. -G 'MSYS Makefiles' -DCMAKE_BUILD_TYPE=Debug"
+        && cd melonDS-Vanguard/melonDS-Vanguard/build && cmake .. -G 'MSYS Makefiles' -DCMAKE_BUILD_TYPE=Debug"
     - name: Make
       run: |
         C:\msys64\usr\bin\bash.exe -lc "export PATH=`"/mingw64/bin:`$PATH`" \
-        && cd melonDS-Vanguard/build && make -j$(nproc --all) \
+        && cd melonDS-Vanguard/melonDS-Vanguard/build && make -j$(nproc --all) \
         && ../msys-dist.sh"
