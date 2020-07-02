@@ -13,26 +13,28 @@ macro(_add_example _name)
 	endif()
 endmacro()
 
-# _add_example(controlgallery
-# 	controlgallery/main.c
-# 	${_EXAMPLE_RESOURCES_RC}
-# )
+if (NOT DONT_BUILD_EXTRA_SDL_CODE)
+	_add_example(controlgallery
+		controlgallery/main.c
+		${_EXAMPLE_RESOURCES_RC}
+	)
 
-# _add_example(histogram
-# 	histogram/main.c
-# 	${_EXAMPLE_RESOURCES_RC}
-# )
+	_add_example(histogram
+		histogram/main.c
+		${_EXAMPLE_RESOURCES_RC}
+	)
 
-# _add_example(cpp-multithread
-# 	cpp-multithread/main.cpp
-# 	${_EXAMPLE_RESOURCES_RC}
-# )
+	_add_example(cpp-multithread
+		cpp-multithread/main.cpp
+		${_EXAMPLE_RESOURCES_RC}
+	)
+endif()
 if(NOT WIN32)
 	target_link_libraries(cpp-multithread pthread)
 endif()
 
-# add_custom_target(examples
-# 	DEPENDS
-# 		controlgallery
-# 		histogram
-# 		cpp-multithread)
+add_custom_target(examples
+	DEPENDS
+		controlgallery
+		histogram
+		cpp-multithread)

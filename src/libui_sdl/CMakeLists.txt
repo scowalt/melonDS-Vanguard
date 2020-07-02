@@ -20,7 +20,11 @@ if (WIN32)
 endif()
 
 option(BUILD_SHARED_LIBS "Whether to build libui as a shared library or a static library" ON)
-set(BUILD_SHARED_LIBS ON)
+if(CI_BUILD_SHARED_LIBS)
+	set(BUILD_SHARED_LIBS ON)
+else()
+	set(BUILD_SHARED_LIBS OFF)
+endif()
 add_subdirectory(libui)
 
 #find_package(SDL2 REQUIRED)
