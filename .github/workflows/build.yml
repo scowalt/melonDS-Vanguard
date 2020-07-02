@@ -1,0 +1,31 @@
+name: Build
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: windows-2019
+    steps:
+    - name: Checkout current build target
+      uses: actions/checkout@v2
+      with:
+        path: 'melonDS-Vanguard'
+
+    # Build melonDS
+    - name: Install MSYS2
+      run: |
+        C:\msys64\usr\bin\bash.exe -lc "pacman -Syuq --noconfirm"
+    - name: Install MSYS2 dependencies
+      run: |
+        C:\msys64\usr\bin\bash.exe -lc "pacman -Sq --noconfirm git make mingw-w64-x86_64-{cmake,mesa,SDL2,toolchain}"
+    - name: Create build directory
+      run: |
+        New-Item -ItemType directory -Path ${{runner.workspace}}\melonDS-Vanguard\melonDS-Vanguard\build
+    - name: Configure
+      run: |
+        C:\msys64\usr\bin\bash.exe -lc "export PATH=`"/mingw64/bin:`$PATH`" \
+        && cd melonDS-Vanguard/build && cmake .. -G 'MSYS Makefiles' -DCMAKE_BUILD_TYPE=Debug"
+    - name: Make
+      run: |
+        C:\msys64\usr\bin\bash.exe -lc "export PATH=`"/mingw64/bin:`$PATH`" \
+        && cd melonDS-Vanguard/build && make -j$(nproc --all) \
+        && ../msys-dist.sh"
