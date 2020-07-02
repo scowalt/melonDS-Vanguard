@@ -5,30 +5,39 @@ jobs:
   build:
     runs-on: windows-2019
     steps:
+    # Setup tooling
+    - name: Setup MSBuild.exe
+      uses: microsoft/setup-msbuild@v1.0.0
+    - name: Setup Nuget
+      uses: nuget/setup-nuget@v1.0.2
+      with:
+        nuget-version: 'latest'
+
+    # Setup RTCV
+    - name: Checkout RTCV peer dependency
+      uses: actions/checkout@v2
+      with:
+        repository: 'ircluzar/RTCV'
+        ref: '505'
+        path: 'RTCV'
+    - name: Restore Nuget packages in RTCV
+      run: nuget restore '.\RTCV\'
+    - name: Build RTCV
+      run: msbuild '.\RTCV\'
+
+    # Build melonDS
     - name: Checkout current build target
       uses: actions/checkout@v2
       with:
         path: 'melonDS-Vanguard'
-
-    # Build melonDS
-    - name: Install MSYS2
-      run: |
-        C:\msys64\usr\bin\bash.exe -lc "pacman -Syuq --noconfirm"
-    - name: Install MSYS2 dependencies
-      run: |
-        C:\msys64\usr\bin\bash.exe -lc "pacman -Sq --noconfirm git make mingw-w64-x86_64-{cmake,mesa,SDL2,toolchain}"
     - name: Create build directory
       run: |
         New-Item -ItemType directory -Path ${{runner.workspace}}\melonDS-Vanguard\melonDS-Vanguard\build
-    - name: Copy contents to msys
-      run: |
-        Copy-Item -Path ${{runner.workspace}}\melonDS-Vanguard -Destination C:\msys64\home\runneradmin -Recurse
     - name: Configure
       run: |
-        C:\msys64\usr\bin\bash.exe -lc "export PATH=`"/mingw64/bin:`$PATH`" \
-        && cd melonDS-Vanguard/melonDS-Vanguard/build && cmake .. -G 'MSYS Makefiles' -DCMAKE_BUILD_TYPE=Debug"
-    - name: Make
+        cd ${{runner.workspace}}\melonDS-Vanguard\melonDS-Vanguard\build
+        cmake ..
+    - name: Build melonDS-Vanguard
       run: |
-        C:\msys64\usr\bin\bash.exe -lc "export PATH=`"/mingw64/bin:`$PATH`" \
-        && cd melonDS-Vanguard/melonDS-Vanguard/build && make -j$(nproc --all) \
-        && ../msys-dist.sh"
+        cd ${{runner.workspace}}\melonDS-Vanguard\melonDS-Vanguard\build
+        msbuild melonDS.sln
