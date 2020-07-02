@@ -36,7 +36,7 @@ jobs:
     - name: Configure
       run: |
         cd ${{runner.workspace}}\melonDS-Vanguard\melonDS-Vanguard\build
-        cmake .. -DENABLE_LTO=false
+        cmake .. -DENABLE_LTO=false -DDONT_COPY_FIRMWARE=true
     - name: Build melonDS-Vanguard
       run: |
         cd ${{runner.workspace}}\melonDS-Vanguard\melonDS-Vanguard\build
