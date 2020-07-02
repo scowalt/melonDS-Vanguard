@@ -35,9 +35,6 @@ add_executable(melonDS WIN32 ${SOURCES_LIBUI})
 target_link_libraries(melonDS
 	core ${SDL2_LIBRARIES} libui)
 
-string(REGEX REPLACE "/O2" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-string(REGEX REPLACE "/O2" "" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
-
 if (UNIX)
 	find_package(PkgConfig REQUIRED)
 	pkg_check_modules(GTK3 REQUIRED gtk+-3.0)
