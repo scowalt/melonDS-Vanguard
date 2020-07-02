@@ -27,8 +27,7 @@ else()
 endif()
 
 if(ENABLE_LTO)
-	# add_compile_options(/EHsc /GL /O2) # command line error D8016: '/O2' and '/RTC1' command-line options are incompatible [D:\Code\melonDS-Vanguard\build\src\libui_sdl\libui\libui.vcxproj]
-	add_compile_options(/EHsc /GL)
+	add_compile_options(/EHsc /GL /O2)
 	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /LTCG")
 	set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} /LTCG")
 	set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /LTCG")
