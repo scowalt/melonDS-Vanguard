@@ -20,6 +20,9 @@ jobs:
     - name: Create build directory
       run: |
         New-Item -ItemType directory -Path ${{runner.workspace}}\melonDS-Vanguard\melonDS-Vanguard\build
+    - name: Copy contents to msys
+      run: |
+        Copy-Item -Path ${{runner.workspace}}\melonDS-Vanguard -Destination C:\msys64\home\runneradmin -Recurse
     - name: Configure
       run: |
         C:\msys64\usr\bin\bash.exe -lc "export PATH=`"/mingw64/bin:`$PATH`" \
