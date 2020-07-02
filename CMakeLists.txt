@@ -5,13 +5,13 @@ if (POLICY CMP0076)
     cmake_policy(SET CMP0076 NEW)
 endif()
 
-# add_compile_options(/Dstrncasecmp=_strnicmp /Dstrcasecmp=_stricmp /DWIN32 /D__WIN32__)
+add_compile_options(/Dstrncasecmp=_strnicmp /Dstrcasecmp=_stricmp /DWIN32 /D__WIN32__)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
-# set(CMAKE_EXE_LINKER_FLAGS    "${CMAKE_EXE_LINKER_FLAGS} /MANIFEST:NO")
+set(CMAKE_EXE_LINKER_FLAGS    "${CMAKE_EXE_LINKER_FLAGS} /MANIFEST:NO")
 set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} /MANIFEST:NO")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /MANIFEST:NO")
-# set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /CLRTHREADATTRIBUTE:STA")
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /CLRTHREADATTRIBUTE:STA")
 
 
 if(NOT CMAKE_BUILD_TYPE)
@@ -27,7 +27,8 @@ else()
 endif()
 
 if(ENABLE_LTO)
-	# add_compile_options(/EHsc /GL /O2)
+	# add_compile_options(/EHsc /GL /O2) # command line error D8016: '/O2' and '/RTC1' command-line options are incompatible [D:\Code\melonDS-Vanguard\build\src\libui_sdl\libui\libui.vcxproj]
+	add_compile_options(/EHsc /GL)
 	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /LTCG")
 	set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} /LTCG")
 	set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /LTCG")

@@ -66,4 +66,3 @@ endforeach()
 # configure_file(${CMAKE_SOURCE_DIR}/bios9.bin ${CMAKE_BINARY_DIR}/bios9.bin COPYONLY) 
 
 target_link_libraries(core ole32 gdi32 user32 shell32 ole32 dwrite d2d1 usp10 ws2_32 iphlpapi SDL2 uxtheme comctl32 ws2_32 opengl32)
-

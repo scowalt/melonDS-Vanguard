@@ -20,7 +20,7 @@ if (WIN32)
 endif()
 
 option(BUILD_SHARED_LIBS "Whether to build libui as a shared library or a static library" ON)
-set(BUILD_SHARED_LIBS OFF)
+set(BUILD_SHARED_LIBS ON)
 add_subdirectory(libui)
 
 #find_package(SDL2 REQUIRED)
@@ -34,6 +34,9 @@ add_compile_options("/AI\"${PROJECT_SOURCE_DIR}/\"")
 add_executable(melonDS WIN32 ${SOURCES_LIBUI})
 target_link_libraries(melonDS
 	core ${SDL2_LIBRARIES} libui)
+
+string(REGEX REPLACE "/O2" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+string(REGEX REPLACE "/O2" "" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
 
 if (UNIX)
 	find_package(PkgConfig REQUIRED)
