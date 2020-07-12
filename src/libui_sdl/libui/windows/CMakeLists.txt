@@ -79,8 +79,12 @@ endmacro()
 
 # notice that usp10 comes before gdi32
 # TODO prune this list
+if (CI_INCLUDE_EXTRA_LIBUI_LIBS)
+	set (_LIBUI_EXTRA_LIBS opengl32 shell32)
+endif()
+
 set(_LIBUI_LIBS
-	user32 kernel32 usp10 gdi32 comctl32 uxtheme msimg32 comdlg32 d2d1 dwrite ole32 oleaut32 oleacc uuid
+	user32 kernel32 usp10 gdi32 comctl32 uxtheme msimg32 comdlg32 d2d1 dwrite ole32 oleaut32 oleacc uuid ${_LIBUI_EXTRA_LIBS}
 PARENT_SCOPE)
 
 if(NOT MSVC)
