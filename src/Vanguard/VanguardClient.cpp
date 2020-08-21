@@ -26,11 +26,11 @@
 #using <../../../RTCV/Build/CorruptCore.dll>
 #using <../../../RTCV/Build/RTCV.Common.dll>
 
-
 using namespace cli;
 using namespace System;
 using namespace Text;
 using namespace RTCV;
+using namespace RTCV::CorruptCore::Extensions;
 using namespace NetCore;
 using namespace CorruptCore;
 using namespace Vanguard;
@@ -94,7 +94,7 @@ static void EmuThreadExecute(Action ^ callback)
 
 }
 static void EmuThreadExecute(IntPtr callbackPtr)
-{ 
+{
 	int prevstatus = EmuRunning;
 	EmuRunning = 2;
 	while (EmuStatus != 2);
@@ -227,7 +227,7 @@ void VanguardClientInitializer::StartVanguardClient()
 	System::Windows::Forms::Application::EnableVisualStyles();
 	System::Windows::Forms::Application::SetCompatibleTextRenderingDefault(false);
 
-	
+
 	System::Windows::Forms::Form ^ dummy = gcnew System::Windows::Forms::Form();
 	IntPtr Handle = dummy->Handle;
 	SyncObjectSingleton::SyncObject = dummy;
@@ -320,8 +320,8 @@ void VanguardClient::LoadWindowPosition()
 
 	//todo make this not garbage
 	if (winX > 1850 || winY > 1000 || winX < 5 || winY < 5)
-		return;	
-		
+		return;
+
 	uiWindowSetBorderless(MainWindow, true);
 	uiWindowSetPosition(MainWindow, winX, winY);
 	uiWindowSetBorderless(MainWindow, false);
@@ -481,7 +481,7 @@ array<unsigned char>^ MainRAM::PeekBytes(long long address, int length)
 	return bytes;
 }
 #pragma endregion
-	
+
 #pragma region VRAM
 	String^ VRAM::Name::get()
 	{
@@ -691,7 +691,7 @@ GetInterfaces() {
 
 	if (String::IsNullOrWhiteSpace(AllSpec::VanguardSpec->Get<String ^>(VSPEC::OPENROMFILENAME)))
 		return gcnew array<MemoryDomainProxy ^>(0);
-	
+
 	array<MemoryDomainProxy ^> ^ interfaces = gcnew array<MemoryDomainProxy ^>(5);
 	interfaces[0] = (gcnew MemoryDomainProxy(gcnew MainRAM));
 	interfaces[1] = (gcnew MemoryDomainProxy(gcnew SharedWRAM));
@@ -784,8 +784,8 @@ void VanguardClientUnmanaged::LOAD_GAME_DONE()
 		String ^ gameName = VanguardClientUnmanaged::GAME_NAME.ToString();
 
 		char replaceChar = L'-';
-		gameDone->Set(VSPEC::GAMENAME, CorruptCore_Extensions::MakeSafeFilename(gameName, replaceChar));
-		
+		gameDone->Set(VSPEC::GAMENAME, StringExtensions::MakeSafeFilename(gameName, replaceChar));
+
 		AllSpec::VanguardSpec->Update(gameDone, true, false);
 
 		bool domainsChanged = RefreshDomains(true);
@@ -991,7 +991,7 @@ void VanguardClient::OnMessageReceived(Object ^ sender, NetCoreEventArgs ^ e)
 		String ^ gameName = VanguardClientUnmanaged::GAME_NAME.ToString();
 
 		char replaceChar = L'-';
-		String ^ prefix = CorruptCore_Extensions::MakeSafeFilename(gameName, replaceChar);
+		String ^ prefix = StringExtensions::MakeSafeFilename(gameName, replaceChar);
 		prefix = prefix->Substring(prefix->LastIndexOf('\\') + 1);
 
 		String ^ path = nullptr;
@@ -1086,4 +1086,3 @@ void VanguardClient::OnMessageReceived(Object ^ sender, NetCoreEventArgs ^ e)
 		break;
 	}
 }
-
