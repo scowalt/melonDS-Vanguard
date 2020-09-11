@@ -219,15 +219,29 @@ void VanguardClient::ReinitRendererCallback(Object^ sender, System::Timers::Elap
 {
 	ApplyNewSettings(3); //Force reinit of renderer
 }
+
+
+// Create our VanguardClient
+void VanguardClientInitializer::Initialize()
+{
+	// This has to be in its own method where no other dlls are used so the JIT can compile it
+	AppDomain::CurrentDomain->AssemblyResolve +=
+		gcnew ResolveEventHandler(CurrentDomain_AssemblyResolve);
+
+	ConfigureVisualStyles();
+	StartVanguardClient();
+}
+
+void VanguardClientInitializer::ConfigureVisualStyles()
+{
+    // this needs to be done before the warnings/errors show up
+    System::Windows::Forms::Application::EnableVisualStyles();
+    System::Windows::Forms::Application::SetCompatibleTextRenderingDefault(false);
+}
+
 // Create our VanguardClient
 void VanguardClientInitializer::StartVanguardClient()
 {
-
-	// this needs to be done before the warnings/errors show up
-	System::Windows::Forms::Application::EnableVisualStyles();
-	System::Windows::Forms::Application::SetCompatibleTextRenderingDefault(false);
-
-
 	System::Windows::Forms::Form ^ dummy = gcnew System::Windows::Forms::Form();
 	IntPtr Handle = dummy->Handle;
 	SyncObjectSingleton::SyncObject = dummy;
@@ -257,15 +271,6 @@ void VanguardClientInitializer::StartVanguardClient()
 
 }
 
-// Create our VanguardClient
-void VanguardClientInitializer::Initialize()
-{
-	// This has to be in its own method where no other dlls are used so the JIT can compile it
-	AppDomain::CurrentDomain->AssemblyResolve +=
-		gcnew ResolveEventHandler(CurrentDomain_AssemblyResolve);
-
-	StartVanguardClient();
-}
 
 void VanguardClient::StartClient()
 {

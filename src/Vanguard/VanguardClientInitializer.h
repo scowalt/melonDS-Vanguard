@@ -7,4 +7,5 @@ public:
 
 private:
 	static void StartVanguardClient();
+	static void ConfigureVisualStyles();
 };
