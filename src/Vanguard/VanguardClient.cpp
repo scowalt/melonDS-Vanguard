@@ -747,7 +747,7 @@ static void STEP_CORRUPT()  // errors trapped by CPU_STEP
 {
 	if (!VanguardClient::enableRTC)
 		return;
-	RtcClock::STEP_CORRUPT(true, true);
+	RtcClock::StepCorrupt(true, true);
 }
 
 #pragma region Hooks
@@ -765,7 +765,7 @@ void VanguardClientUnmanaged::LOAD_GAME_START(std::string romPath)
 	if (!VanguardClient::enableRTC)
 		return;
 	StepActions::ClearStepBlastUnits();
-    RtcClock::RESET_COUNT();
+    RtcClock::ResetCount();
 
 	String ^ gameName = Helpers::utf8StringToSystemString(romPath);
 	AllSpec::VanguardSpec->Update(VSPEC::OPENROMFILENAME, gameName, true, true);
@@ -910,7 +910,7 @@ void VanguardClient::LoadRom(String ^ filename)
 bool VanguardClient::LoadState(std::string filename)
 {
 	StepActions::ClearStepBlastUnits();
-	RtcClock::RESET_COUNT();
+	RtcClock::ResetCount();
 	Main::LoadState(filename.c_str(), false);
 	return true;
 }
