@@ -1,5 +1,8 @@
 project(libui_sdl)
 
+string(REGEX REPLACE "/RTC(1|su|[1su])" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+string(REGEX REPLACE "/RTC(1|su|[1su])" "" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
+
 link_directories("../thirdparty/sdl")
 SET(SOURCES_LIBUI
 	main.cpp

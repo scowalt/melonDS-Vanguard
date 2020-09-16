@@ -43,7 +43,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES VS_DOTNET_REFERENCE_CorruptCore
 set_target_properties(${PROJECT_NAME} PROPERTIES VS_DOTNET_REFERENCE_NetCore "${PROJECT_SOURCE_DIR}/../../RTCV/Build/NetCore.dll")
 set_target_properties(${PROJECT_NAME} PROPERTIES VS_DOTNET_REFERENCE_NetCore "${PROJECT_SOURCE_DIR}/../../RTCV/Build/RTCV.Common.dll")
 set_target_properties(${PROJECT_NAME} PROPERTIES VS_DOTNET_REFERENCE_Vanguard "${PROJECT_SOURCE_DIR}/../../RTCV/Build/Vanguard.dll")
-set_target_properties(${PROJECT_NAME} PROPERTIES VS_DOTNET_REFERENCES "System;System.Windows.Forms")
+set_target_properties(${PROJECT_NAME} PROPERTIES VS_DOTNET_REFERENCES "System;System.Windows.Forms;${PROJECT_SOURCE_DIR}/../../RTCV/Build/CorruptCore.dll;${PROJECT_SOURCE_DIR}/../../RTCV/Build/NetCore.dll;${PROJECT_SOURCE_DIR}/../../RTCV/Build/RTCV.Common.dll;${PROJECT_SOURCE_DIR}/../../RTCV/Build/Vanguard.dll")
 string(REGEX REPLACE "/RTC(su|[1su])" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 string(REGEX REPLACE "/RTC(su|[1su])" "" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
 # Narrysmod

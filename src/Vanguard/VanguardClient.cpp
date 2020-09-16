@@ -16,21 +16,12 @@
 #include "../NDSCart.h"
 
 #include <msclr/marshal_cppstd.h>
-#using < system.dll>
-#using < system.windows.forms.dll>
-#using < system.collections.dll>
-
-//If we provide just the dll name and then compile with /AI it works, but intellisense doesn't pick up on it, so we use a full relative path
-#using <../../../../../RTCV/Build/NetCore.dll>
-#using <../../../../../RTCV/Build/Vanguard.dll>
-#using <../../../../../RTCV/Build/CorruptCore.dll>
-#using <../../../../../RTCV/Build/RTCV.Common.dll>
 
 using namespace cli;
 using namespace System;
 using namespace Text;
 using namespace RTCV;
-using namespace RTCV::CorruptCore::Extensions;
+using namespace CorruptCore::Extensions;
 using namespace NetCore;
 using namespace CorruptCore;
 using namespace Vanguard;
