@@ -900,12 +900,12 @@ void VanguardClient::OnMessageReceived(Object ^ sender, NetCoreEventArgs ^ e)
 	if (Helpers::is<NetCoreAdvancedMessage ^>(message))
 		advancedMessage = static_cast<NetCoreAdvancedMessage ^>(message);
 
-	if (message->Type.compare(NetCore::Commands::Remote::AllSpecSent) == 0)
+	if (String::Compare(message->Type, NetCore::Commands::Remote::AllSpecSent) == 0)
 	{
 		auto g = gcnew SyncObjectSingleton::GenericDelegate(&AllSpecsSent);
 		SyncObjectSingleton::FormExecute(g);
 	}
-	else if (message->Type.compare(NetCore::Commands::Basic::LoadSavestate) == 0)
+	else if (String::Compare(message->Type, NetCore::Commands::Basic::LoadSavestate) == 0)
 	{
 		array<Object ^> ^ cmd = static_cast<array<Object ^> ^>(advancedMessage->objectValue);
 		String ^ path = static_cast<String ^>(cmd[0]);
@@ -921,7 +921,7 @@ void VanguardClient::OnMessageReceived(Object ^ sender, NetCoreEventArgs ^ e)
 		bool success = LoadState(converted_path);
 		e->setReturnValue(success);
 	}
-	else if (message->Type.compare(NetCore::Commands::Basic::SaveSavestate) == 0)
+	else if (String::Compare(message->Type, NetCore::Commands::Basic::SaveSavestate) == 0)
 	{
 		String ^ Key = (String ^)(advancedMessage->objectValue);
 
@@ -949,52 +949,52 @@ void VanguardClient::OnMessageReceived(Object ^ sender, NetCoreEventArgs ^ e)
 		VanguardClient::SaveState(path, true);
 		e->setReturnValue(path);
 	}
-	else if (message->Type.compare(NetCore::Commands::Remote::LoadROM) == 0)
+	else if (String::Compare(message->Type, NetCore::Commands::Remote::LoadROM) == 0)
 	{
 		String ^ filename = (String ^)advancedMessage->objectValue;
 		//Dolphin DEMANDS the rom is loaded from the main thread
 		System::Action<String^>^a = gcnew Action<String^>(&LoadRom);
 		SyncObjectSingleton::FormExecute<String ^>(a, filename);
 	}
-	else if (message->Type.compare(NetCore::Commands::Remote::CloseGame) == 0)
+	else if (String::Compare(message->Type, NetCore::Commands::Remote::CloseGame) == 0)
 	{
 		SyncObjectSingleton::GenericDelegate ^ g =
 			gcnew SyncObjectSingleton::GenericDelegate(&StopGame);
 		SyncObjectSingleton::FormExecute(g);
 	}
-	else if (message->Type.compare(NetCore::Commands::Remote::DomainGetDomains) == 0)
+	else if (String::Compare(message->Type, NetCore::Commands::Remote::DomainGetDomains) == 0)
 	{
 		RefreshDomains();
 	}
-	else if (message->Type.compare(NetCore::Commands::Remote::KeySetSyncSettings) == 0)
+	else if (String::Compare(message->Type, NetCore::Commands::Remote::KeySetSyncSettings) == 0)
 	{
 		String ^ settings = (String ^)(advancedMessage->objectValue);
 		AllSpec::VanguardSpec->Set(VSPEC::SYNCSETTINGS, settings);
 	}
-	else if (message->Type.compare(NetCore::Commands::Remote::KeySetSystemCore) == 0)
+	else if (String::Compare(message->Type, NetCore::Commands::Remote::KeySetSystemCore) == 0)
 	{
 		// Do nothing
 	}
-	else if (message->Type.compare(NetCore::Commands::Remote::EventEmuStarted) == 0)
+	else if (String::Compare(message->Type, NetCore::Commands::Remote::EventEmuStarted) == 0)
 	{
 		// Do nothing
 	}
-	else if (message->Type.compare(NetCore::Commands::Remote::IsNormalAdvance) == 0)
+	else if (String::Compare(message->Type, NetCore::Commands::Remote::IsNormalAdvance) == 0)
 	{
 		// Todo - Dig out fast forward?
 		e->setReturnValue(true);
 	}
-	else if (message->Type.compare(NetCore::Commands::Remote::PostCorruptAction) == 0)
+	else if (String::Compare(message->Type, NetCore::Commands::Remote::PostCorruptAction) == 0)
 	{
 		if (Config::ScreenUseGL || (Config::_3DRenderer != 0))
 			VanguardClient::ReinitRendererTimer->Enabled = true;
 	}
-	else if (message->Type.compare(NetCore::Commands::Remote::ResumeEmulation) == 0)
+	else if (String::Compare(message->Type, NetCore::Commands::Remote::ResumeEmulation) == 0)
 	{
 		EmuRunning = 1;
 	}
-	else if (message->Type.compare(NetCore::Commands::Remote::EventEmuMainFormClose) == 0 ||
-			 message->Type.compare(NetCore::Commands::Remote::EventCloseEmulator) == 0)
+	else if (String::Compare(message->Type, NetCore::Commands::Remote::EventEmuMainFormClose) == 0 ||
+			 String::Compare(message->Type, NetCore::Commands::Remote::EventCloseEmulator) == 0)
 	{
 		//Don't allow re-entry on this
 		Monitor::Enter(VanguardClient::GenericLockObject);
