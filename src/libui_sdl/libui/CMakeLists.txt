@@ -77,6 +77,7 @@ if(MSVC)
 	# /RTCc is not supplied because it's discouraged as of VS2015; see https://www.reddit.com/r/cpp/comments/46mhne/rtcc_rejects_conformant_code_with_visual_c_2015/d06auq5
 	# /EHsc is to shut the compiler up in some cases
 	# TODO make /EHsc C++-only
+
 	set(_COMMON_CFLAGS
 		/W4 /wd4100
 		/bigobj /nologo
@@ -218,5 +219,5 @@ macro(_add_exec _name)
 			PUBLIC ${_COMMON_CFLAGS})
 	endif()
 endmacro()
-add_subdirectory("test")
-add_subdirectory("examples")
+#add_subdirectory("test")
+#add_subdirectory("examples")
