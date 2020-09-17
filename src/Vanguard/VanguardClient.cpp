@@ -127,9 +127,9 @@ void VanguardClient::SpecUpdated(Object ^ sender, SpecUpdateEventArgs ^ e)
 {
 	PartialSpec ^ partial = e->partialSpec;
 
-	LocalNetCoreRouter::Route(Commands::Basic::CorruptCore,
+	LocalNetCoreRouter::Route(Endpoints::CorruptCore,
 		Commands::Remote::PushVanguardSpecUpdate, partial, true);
-	LocalNetCoreRouter::Route(Commands::Basic::UI, Commands::Remote::PushVanguardSpecUpdate,
+	LocalNetCoreRouter::Route(Endpoints::UI, Commands::Remote::PushVanguardSpecUpdate,
 		partial, true);
 }
 
@@ -145,9 +145,9 @@ void VanguardClient::RegisterVanguardSpec()
 	if (VanguardClient::attached)
 		RTCV::Vanguard::VanguardConnector::PushVanguardSpecRef(AllSpec::VanguardSpec);
 
-	LocalNetCoreRouter::Route(Commands::Basic::CorruptCore, Commands::Remote::PushVanguardSpec,
+	LocalNetCoreRouter::Route(Endpoints::CorruptCore, Commands::Remote::PushVanguardSpec,
 		emuSpecTemplate, true);
-	LocalNetCoreRouter::Route(Commands::Basic::UI, Commands::Remote::PushVanguardSpec,
+	LocalNetCoreRouter::Route(Endpoints::UI, Commands::Remote::PushVanguardSpec,
 		emuSpecTemplate, true);
 	AllSpec::VanguardSpec->SpecUpdated +=
 		gcnew EventHandler<SpecUpdateEventArgs ^>(&VanguardClient::SpecUpdated);
@@ -725,7 +725,7 @@ static bool RefreshDomains(bool updateSpecs = true)
 	if (updateSpecs)
 	{
 		AllSpec::VanguardSpec->Update(VSPEC::MEMORYDOMAINS_INTERFACES, newInterfaces, true, true);
-		LocalNetCoreRouter::Route(Commands::Basic::CorruptCore,
+		LocalNetCoreRouter::Route(Endpoints::CorruptCore,
 			Commands::Remote::EventDomainsUpdated, domainsChanged, true);
 	}
 
@@ -788,7 +788,7 @@ void VanguardClientUnmanaged::LOAD_GAME_DONE()
 
 		if (oldGame != gameName)
 		{
-			LocalNetCoreRouter::Route(Commands::Basic::UI,
+			LocalNetCoreRouter::Route(Endpoints::UI,
 				Commands::Basic::ResetGameProtectionIfRunning, true);
 		}
 	}
