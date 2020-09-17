@@ -127,9 +127,9 @@ void VanguardClient::SpecUpdated(Object ^ sender, SpecUpdateEventArgs ^ e)
 {
 	PartialSpec ^ partial = e->partialSpec;
 
-	LocalNetCoreRouter::Route(NetcoreCommands::CORRUPTCORE,
-		NetcoreCommands::REMOTE_PUSHVANGUARDSPECUPDATE, partial, true);
-	LocalNetCoreRouter::Route(NetcoreCommands::UI, NetcoreCommands::REMOTE_PUSHVANGUARDSPECUPDATE,
+	LocalNetCoreRouter::Route(Commands::Basic::CorruptCore,
+		Commands::Remote::PushVanguardSpecUpdate, partial, true);
+	LocalNetCoreRouter::Route(Commands::Basic::UI, Commands::Remote::PushVanguardSpecUpdate,
 		partial, true);
 }
 
@@ -145,9 +145,9 @@ void VanguardClient::RegisterVanguardSpec()
 	if (VanguardClient::attached)
 		RTCV::Vanguard::VanguardConnector::PushVanguardSpecRef(AllSpec::VanguardSpec);
 
-	LocalNetCoreRouter::Route(NetcoreCommands::CORRUPTCORE, NetcoreCommands::REMOTE_PUSHVANGUARDSPEC,
+	LocalNetCoreRouter::Route(Commands::Basic::CorruptCore, Commands::Remote::PushVanguardSpec,
 		emuSpecTemplate, true);
-	LocalNetCoreRouter::Route(NetcoreCommands::UI, NetcoreCommands::REMOTE_PUSHVANGUARDSPEC,
+	LocalNetCoreRouter::Route(Commands::Basic::UI, Commands::Remote::PushVanguardSpec,
 		emuSpecTemplate, true);
 	AllSpec::VanguardSpec->SpecUpdated +=
 		gcnew EventHandler<SpecUpdateEventArgs ^>(&VanguardClient::SpecUpdated);
@@ -725,8 +725,8 @@ static bool RefreshDomains(bool updateSpecs = true)
 	if (updateSpecs)
 	{
 		AllSpec::VanguardSpec->Update(VSPEC::MEMORYDOMAINS_INTERFACES, newInterfaces, true, true);
-		LocalNetCoreRouter::Route(NetcoreCommands::CORRUPTCORE,
-			NetcoreCommands::REMOTE_EVENT_DOMAINSUPDATED, domainsChanged, true);
+		LocalNetCoreRouter::Route(Commands::Basic::CorruptCore,
+			Commands::Remote::EventDomainsUpdated, domainsChanged, true);
 	}
 
 	return domainsChanged;
@@ -738,7 +738,7 @@ static void STEP_CORRUPT()  // errors trapped by CPU_STEP
 {
 	if (!VanguardClient::enableRTC)
 		return;
-	RtcClock::STEP_CORRUPT(true, true);
+	RtcClock::StepCorrupt(true, true);
 }
 
 #pragma region Hooks
@@ -756,7 +756,7 @@ void VanguardClientUnmanaged::LOAD_GAME_START(std::string romPath)
 	if (!VanguardClient::enableRTC)
 		return;
 	StepActions::ClearStepBlastUnits();
-    RtcClock::RESET_COUNT();
+    RtcClock::ResetCount();
 
 	String ^ gameName = Helpers::utf8StringToSystemString(romPath);
 	AllSpec::VanguardSpec->Update(VSPEC::OPENROMFILENAME, gameName, true, true);
@@ -788,8 +788,8 @@ void VanguardClientUnmanaged::LOAD_GAME_DONE()
 
 		if (oldGame != gameName)
 		{
-			LocalNetCoreRouter::Route(NetcoreCommands::UI,
-				NetcoreCommands::RESET_GAME_PROTECTION_IF_RUNNING, true);
+			LocalNetCoreRouter::Route(Commands::Basic::UI,
+				Commands::Basic::ResetGameProtectionIfRunning, true);
 		}
 	}
 	catch (Exception ^ e)
@@ -804,7 +804,7 @@ void VanguardClientUnmanaged::GAME_CLOSED()
 		return;
 	AllSpec::VanguardSpec->Update(VSPEC::OPENROMFILENAME, "", true, true);
 	RefreshDomains();
-	RtcCore::GAME_CLOSED(true);
+	RtcCore::InvokeGameClosed(true);
 }
 
 int VanguardClientUnmanaged::GAME_NAME = 1;
@@ -819,61 +819,6 @@ bool VanguardClientUnmanaged::RTC_OSD_ENABLED()
 }
 
 #pragma endregion
-
-/*ENUMS FOR THE SWITCH STATEMENT*/
-enum COMMANDS
-{
-	SAVESAVESTATE,
-	LOADSAVESTATE,
-	REMOTE_LOADROM,
-	REMOTE_CLOSEGAME,
-	REMOTE_DOMAIN_GETDOMAINS,
-	REMOTE_KEY_SETSYNCSETTINGS,
-	REMOTE_KEY_SETSYSTEMCORE,
-	REMOTE_EVENT_EMU_MAINFORM_CLOSE,
-	REMOTE_EVENT_EMUSTARTED,
-	REMOTE_ISNORMALADVANCE,
-	REMOTE_EVENT_CLOSEEMULATOR,
-	REMOTE_ALLSPECSSENT,
-	REMOTE_POSTCORRUPTACTION,
-	REMOTE_RESUMEEMULATION,
-	UNKNOWN
-};
-
-inline COMMANDS CheckCommand(String ^ inString)
-{
-	if (inString == "LOADSAVESTATE")
-		return LOADSAVESTATE;
-	if (inString == "SAVESAVESTATE")
-		return SAVESAVESTATE;
-	if (inString == "REMOTE_LOADROM")
-		return REMOTE_LOADROM;
-	if (inString == "REMOTE_CLOSEGAME")
-		return REMOTE_CLOSEGAME;
-	if (inString == "REMOTE_ALLSPECSSENT")
-		return REMOTE_ALLSPECSSENT;
-	if (inString == "REMOTE_DOMAIN_GETDOMAINS")
-		return REMOTE_DOMAIN_GETDOMAINS;
-	if (inString == "REMOTE_KEY_SETSYSTEMCORE")
-		return REMOTE_KEY_SETSYSTEMCORE;
-	if (inString == "REMOTE_KEY_SETSYNCSETTINGS")
-		return REMOTE_KEY_SETSYNCSETTINGS;
-	if (inString == "REMOTE_EVENT_EMU_MAINFORM_CLOSE")
-		return REMOTE_EVENT_EMU_MAINFORM_CLOSE;
-	if (inString == "REMOTE_EVENT_EMUSTARTED")
-		return REMOTE_EVENT_EMUSTARTED;
-	if (inString == "REMOTE_ISNORMALADVANCE")
-		return REMOTE_ISNORMALADVANCE;
-	if (inString == "REMOTE_EVENT_CLOSEEMULATOR")
-		return REMOTE_EVENT_CLOSEEMULATOR;
-	if (inString == "REMOTE_ALLSPECSSENT")
-		return REMOTE_ALLSPECSSENT;
-	if (inString == "REMOTE_POSTCORRUPTACTION")
-		return REMOTE_POSTCORRUPTACTION;
-	if (inString == "REMOTE_RESUMEEMULATION")
-		return REMOTE_RESUMEEMULATION;
-	return UNKNOWN;
-}
 
 /* IMPLEMENT YOUR COMMANDS HERE */
 void VanguardClient::LoadRom(String ^ filename)
@@ -901,7 +846,7 @@ void VanguardClient::LoadRom(String ^ filename)
 bool VanguardClient::LoadState(std::string filename)
 {
 	StepActions::ClearStepBlastUnits();
-	RtcClock::RESET_COUNT();
+	RtcClock::ResetCount();
 	Main::LoadState(filename.c_str(), false);
 	return true;
 }
@@ -946,16 +891,12 @@ void VanguardClient::OnMessageReceived(Object ^ sender, NetCoreEventArgs ^ e)
 	if (Helpers::is<NetCoreAdvancedMessage ^>(message))
 		advancedMessage = static_cast<NetCoreAdvancedMessage ^>(message);
 
-	switch (CheckCommand(message->Type))
-	{
-	case REMOTE_ALLSPECSSENT:
+	if (String::Compare(message->Type, NetCore::Commands::Remote::AllSpecSent) == 0)
 	{
 		auto g = gcnew SyncObjectSingleton::GenericDelegate(&AllSpecsSent);
 		SyncObjectSingleton::FormExecute(g);
 	}
-	break;
-
-	case LOADSAVESTATE:
+	else if (String::Compare(message->Type, NetCore::Commands::Basic::LoadSavestate) == 0)
 	{
 		array<Object ^> ^ cmd = static_cast<array<Object ^> ^>(advancedMessage->objectValue);
 		String ^ path = static_cast<String ^>(cmd[0]);
@@ -971,9 +912,7 @@ void VanguardClient::OnMessageReceived(Object ^ sender, NetCoreEventArgs ^ e)
 		bool success = LoadState(converted_path);
 		e->setReturnValue(success);
 	}
-	break;
-
-	case SAVESAVESTATE:
+	else if (String::Compare(message->Type, NetCore::Commands::Basic::SaveSavestate) == 0)
 	{
 		String ^ Key = (String ^)(advancedMessage->objectValue);
 
@@ -1001,71 +940,52 @@ void VanguardClient::OnMessageReceived(Object ^ sender, NetCoreEventArgs ^ e)
 		VanguardClient::SaveState(path, true);
 		e->setReturnValue(path);
 	}
-	break;
-
-	case REMOTE_LOADROM:
+	else if (String::Compare(message->Type, NetCore::Commands::Remote::LoadROM) == 0)
 	{
 		String ^ filename = (String ^)advancedMessage->objectValue;
 		//Dolphin DEMANDS the rom is loaded from the main thread
 		System::Action<String^>^a = gcnew Action<String^>(&LoadRom);
 		SyncObjectSingleton::FormExecute<String ^>(a, filename);
 	}
-	break;
-
-	case REMOTE_CLOSEGAME:
+	else if (String::Compare(message->Type, NetCore::Commands::Remote::CloseGame) == 0)
 	{
 		SyncObjectSingleton::GenericDelegate ^ g =
 			gcnew SyncObjectSingleton::GenericDelegate(&StopGame);
 		SyncObjectSingleton::FormExecute(g);
 	}
-	break;
-
-	case REMOTE_DOMAIN_GETDOMAINS:
+	else if (String::Compare(message->Type, NetCore::Commands::Remote::DomainGetDomains) == 0)
 	{
 		RefreshDomains();
 	}
-	break;
-
-	case REMOTE_KEY_SETSYNCSETTINGS:
+	else if (String::Compare(message->Type, NetCore::Commands::Remote::KeySetSyncSettings) == 0)
 	{
 		String ^ settings = (String ^)(advancedMessage->objectValue);
 		AllSpec::VanguardSpec->Set(VSPEC::SYNCSETTINGS, settings);
 	}
-	break;
-
-	case REMOTE_KEY_SETSYSTEMCORE:
+	else if (String::Compare(message->Type, NetCore::Commands::Remote::KeySetSystemCore) == 0)
 	{
 		// Do nothing
 	}
-	break;
-
-	case REMOTE_EVENT_EMUSTARTED:
+	else if (String::Compare(message->Type, NetCore::Commands::Remote::EventEmuStarted) == 0)
 	{
 		// Do nothing
 	}
-	break;
-
-	case REMOTE_ISNORMALADVANCE:
+	else if (String::Compare(message->Type, NetCore::Commands::Remote::IsNormalAdvance) == 0)
 	{
 		// Todo - Dig out fast forward?
 		e->setReturnValue(true);
 	}
-	break;
-	case REMOTE_POSTCORRUPTACTION:
+	else if (String::Compare(message->Type, NetCore::Commands::Remote::PostCorruptAction) == 0)
 	{
 		if (Config::ScreenUseGL || (Config::_3DRenderer != 0))
 			VanguardClient::ReinitRendererTimer->Enabled = true;
 	}
-	break;
-
-	case REMOTE_RESUMEEMULATION:
+	else if (String::Compare(message->Type, NetCore::Commands::Remote::ResumeEmulation) == 0)
 	{
 		EmuRunning = 1;
 	}
-	break;
-
-	case REMOTE_EVENT_EMU_MAINFORM_CLOSE:
-	case REMOTE_EVENT_CLOSEEMULATOR:
+	else if (String::Compare(message->Type, NetCore::Commands::Remote::EventEmuMainFormClose) == 0 ||
+			 String::Compare(message->Type, NetCore::Commands::Remote::EventCloseEmulator) == 0)
 	{
 		//Don't allow re-entry on this
 		Monitor::Enter(VanguardClient::GenericLockObject);
@@ -1075,10 +995,5 @@ void VanguardClient::OnMessageReceived(Object ^ sender, NetCoreEventArgs ^ e)
 			Quit();
 		}
 		Monitor::Exit(VanguardClient::GenericLockObject);
-	}
-	break;
-
-	default:
-		break;
 	}
 }
